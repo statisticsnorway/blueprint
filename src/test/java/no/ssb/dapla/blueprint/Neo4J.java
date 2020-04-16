@@ -24,7 +24,9 @@ public class Neo4J {
         LOG.info("Deleting existing Neo4J data-folder");
         long neo4jStart = System.currentTimeMillis();
         File dataDirectory = new File("target/data");
-        deleteFolder(dataDirectory);
+        if (dataDirectory.isDirectory()) {
+            deleteFolder(dataDirectory);
+        }
         LOG.info("Starting embedded Neo4J... ");
         DatabaseManagementService managementService = new DatabaseManagementServiceBuilder(dataDirectory)
                 .setConfig(GraphDatabaseSettings.default_database, "testdb")
