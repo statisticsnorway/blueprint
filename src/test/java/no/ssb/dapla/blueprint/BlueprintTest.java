@@ -21,6 +21,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
+import io.helidon.config.Config;
 import io.helidon.media.common.MediaSupport;
 import io.helidon.media.jackson.common.JacksonBodyReader;
 import io.helidon.media.jackson.common.JacksonBodyWriter;
@@ -34,6 +35,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.TimeUnit;
+
+import static io.helidon.config.ConfigSources.classpath;
 
 public class BlueprintTest {
 
@@ -52,9 +55,14 @@ public class BlueprintTest {
 
     @BeforeAll
     public static void startTheServer() {
-        Neo4J.initializeEmbedded();
+        Config config = Config
+                .builder(classpath("application-dev.yaml"),
+                        classpath("application.yaml"))
+                .metaConfig()
+                .build();
+        Neo4J.initializeEmbedded(config.get("neo4j"));
         long webServerStart = System.currentTimeMillis();
-        webServer = new BlueprintApplication().get(WebServer.class);
+        webServer = new BlueprintApplication(config).get(WebServer.class);
         webServer.start().toCompletableFuture()
                 .thenAccept(webServer -> {
                     long duration = System.currentTimeMillis() - webServerStart;

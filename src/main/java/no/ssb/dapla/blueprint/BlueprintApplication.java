@@ -50,7 +50,7 @@ public class BlueprintApplication {
      * @throws IOException if there are problems reading logging properties
      */
     public static void main(final String[] args) throws IOException {
-        BlueprintApplication app = new BlueprintApplication();
+        BlueprintApplication app = new BlueprintApplication(Config.create());
 
         // Try to start the server. If successful, print some info and arrange to
         // print a message at shutdown. If unsuccessful, print the exception.
@@ -70,11 +70,10 @@ public class BlueprintApplication {
 
     private final Map<Class<?>, Object> instanceByType = new ConcurrentHashMap<>();
 
-    BlueprintApplication() {
-        Config config = Config.create();
+    BlueprintApplication(Config config) {
         put(Config.class, config);
 
-        Driver driver = GraphDatabase.driver("bolt://localhost:7687", AuthTokens.basic("neo4j", "password"));
+        Driver driver = initNeo4jDriver(config.get("neo4j"));
         put(Driver.class, driver);
 
         HealthSupport health = HealthSupport.builder()
@@ -94,6 +93,14 @@ public class BlueprintApplication {
                 .register("/blueprint", blueprintService)
                 .build());
         put(WebServer.class, server);
+    }
+
+    private Driver initNeo4jDriver(Config config) {
+        String host = config.get("host").asString().get();
+        int port = config.get("port").asInt().get();
+        String username = config.get("username").asString().get();
+        String password = config.get("password").asString().get();
+        return GraphDatabase.driver("bolt://" + host + ":" + port, AuthTokens.basic(username, password));
     }
 
     public <T> T put(Class<T> clazz, T instance) {

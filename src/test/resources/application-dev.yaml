@@ -1,0 +1,14 @@
+server:
+  port: 13220
+  host: 0.0.0.0
+  access-log:
+    format: "%h %u %t %r %s %b %{Referer}i %T"
+
+neo4j:
+  host: localhost
+  port: 13487
+  username: neo4j
+  password: password
+
+tracing:
+  enabled: false
