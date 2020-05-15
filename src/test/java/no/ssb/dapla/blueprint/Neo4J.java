@@ -11,11 +11,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.SimpleFileVisitor;
-import java.nio.file.attribute.BasicFileAttributes;
+import java.util.Comparator;
 
 public class Neo4J {
 
@@ -24,14 +22,14 @@ public class Neo4J {
     static void initializeEmbedded(Config config) {
         LOG.info("Deleting existing Neo4J data-folder");
         long neo4jStart = System.currentTimeMillis();
-        File dataDirectory = new File("target/data");
-        if (dataDirectory.isDirectory()) {
+        Path dataDirectory = Path.of("target/data");
+        if (Files.exists(dataDirectory)) {
             deleteFolder(dataDirectory);
         }
         LOG.info("Starting embedded Neo4J... ");
         String host = config.get("host").asString().get();
         int port = config.get("port").asInt().get();
-        DatabaseManagementService managementService = new DatabaseManagementServiceBuilder(dataDirectory)
+        DatabaseManagementService managementService = new DatabaseManagementServiceBuilder(dataDirectory.toFile())
                 .setConfig(GraphDatabaseSettings.default_database, "testdb")
                 .setConfig(GraphDatabaseSettings.pagecache_memory, "512M")
                 .setConfig(GraphDatabaseSettings.string_block_size, 60)
@@ -43,27 +41,12 @@ public class Neo4J {
         LOG.info("Embedded Neo4J started in {} ms", System.currentTimeMillis() - neo4jStart);
     }
 
-    private static void deleteFolder(File dataDirectory) {
+    private static void deleteFolder(Path dataDirectory) {
         try {
-            Files.walkFileTree(dataDirectory.toPath(), new SimpleFileVisitor<>() {
-                @Override
-                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs)
-                        throws IOException {
-                    Files.delete(file);
-                    return FileVisitResult.CONTINUE;
-                }
-
-                @Override
-                public FileVisitResult postVisitDirectory(Path dir, IOException e)
-                        throws IOException {
-                    if (e == null) {
-                        Files.delete(dir);
-                        return FileVisitResult.CONTINUE;
-                    } else {
-                        throw e;
-                    }
-                }
-            });
+            Files.walk(dataDirectory)
+                    .sorted(Comparator.reverseOrder())
+                    .map(Path::toFile)
+                    .forEach(File::delete);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
