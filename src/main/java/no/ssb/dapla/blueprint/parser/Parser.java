@@ -1,5 +1,6 @@
 package no.ssb.dapla.blueprint.parser;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import picocli.CommandLine;
 import picocli.CommandLine.Option;
 
@@ -24,7 +25,7 @@ public final class Parser {
 
         // Select output?
         var output = new DebugOutput();
-        var processor = new NotebookProcessor();
+        var processor = new NotebookProcessor(new ObjectMapper());
 
         for (Path notebook : fileVisitor.getNotebooks()) {
             output.output(processor.process(notebook));
