@@ -3,7 +3,6 @@ package no.ssb.dapla.blueprint.parser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
@@ -28,7 +27,7 @@ public class NotebookFileVisitor extends SimpleFileVisitor<Path> {
     }
 
     @Override
-    public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+    public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
         if (options.ignores.contains(dir.getFileName().toString())) {
             log.warn("ignoring {}", dir);
             return FileVisitResult.SKIP_SUBTREE;
@@ -38,10 +37,12 @@ public class NotebookFileVisitor extends SimpleFileVisitor<Path> {
     }
 
     @Override
-    public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-        log.debug("visiting file {}", file);
+    public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
         if (fileExtension.matcher(file.getFileName().toString()).matches()) {
+            log.debug("visiting {}", file);
             notebooks.add(file);
+        } else {
+            log.debug("ignoring {}", file);
         }
         return FileVisitResult.CONTINUE;
     }
