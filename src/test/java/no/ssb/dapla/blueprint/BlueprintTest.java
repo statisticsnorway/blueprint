@@ -22,9 +22,11 @@ import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
 import io.helidon.config.Config;
+import io.helidon.media.common.DefaultMediaSupport;
 import io.helidon.media.common.MediaSupport;
 import io.helidon.media.jackson.common.JacksonBodyReader;
 import io.helidon.media.jackson.common.JacksonBodyWriter;
+import io.helidon.media.jackson.common.JacksonSupport;
 import io.helidon.webclient.WebClient;
 import io.helidon.webserver.WebServer;
 import org.junit.jupiter.api.AfterAll;
@@ -86,11 +88,8 @@ public class BlueprintTest {
     public void testHelloWorld() {
         WebClient webClient = WebClient.builder()
                 .baseUri("http://localhost:" + webServer.port())
-                .mediaSupport(MediaSupport.builder()
-                        .registerDefaults()
-                        .registerReader(JacksonBodyReader.create(mapper))
-                        .registerWriter(JacksonBodyWriter.create(mapper))
-                        .build())
+                .addMediaSupport(DefaultMediaSupport.create(false))
+                .addMediaSupport(JacksonSupport.create(mapper))
                 .build();
 
         webClient.put()
