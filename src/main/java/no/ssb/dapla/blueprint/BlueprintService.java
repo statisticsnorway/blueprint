@@ -26,6 +26,7 @@ import io.helidon.webserver.Service;
 import org.neo4j.driver.Driver;
 import org.neo4j.driver.Result;
 import org.neo4j.driver.Session;
+import org.neo4j.driver.summary.ResultSummary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,6 +48,7 @@ public class BlueprintService implements Service {
         rules
                 .put("/rev/{rev}", this::putRevisionHandler)
                 .get("/rev/{rev}", this::getRevisionHandler)
+                .delete("/rev/{rev}", this::deleteRevisionHandler)
         ;
     }
 
@@ -69,6 +71,21 @@ public class BlueprintService implements Service {
                 return result.single().get("r").asNode().asMap();
             }));
             response.status(200).send(node);
+        }
+    }
+
+    private void deleteRevisionHandler(ServerRequest request, ServerResponse response) {
+        try (Session session = driver.session()) {
+            ResultSummary resultSummary = session.writeTransaction(tx -> {
+                Result result = tx.run("MATCH (r:GitRevision {revision: $rev}) OPTIONAL MATCH (r)<--(nb) OPTIONAL MATCH (r)<--(nb)--(ds) DETACH DELETE r, nb, ds",
+                        parameters("rev", request.path().param("rev")));
+                return result.consume();
+            });
+            int nodesDeleted = resultSummary.counters().nodesDeleted();
+            int relationshipsDeleted = resultSummary.counters().relationshipsDeleted();
+            response.status(200).send(mapper.createObjectNode()
+                    .put("nodesDeleted", nodesDeleted)
+                    .put("relationshipsDeleted", relationshipsDeleted));
         }
     }
 }

@@ -23,9 +23,6 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
 import io.helidon.config.Config;
 import io.helidon.media.common.DefaultMediaSupport;
-import io.helidon.media.common.MediaSupport;
-import io.helidon.media.jackson.common.JacksonBodyReader;
-import io.helidon.media.jackson.common.JacksonBodyWriter;
 import io.helidon.media.jackson.common.JacksonSupport;
 import io.helidon.webclient.WebClient;
 import io.helidon.webserver.WebServer;
@@ -104,6 +101,17 @@ public class BlueprintTest {
                     return response.content().as(JsonNode.class);
                 })
                 .thenAccept(jsonNode -> Assertions.assertEquals("a21be2b45", jsonNode.get("revision").textValue()))
+                .thenCompose(nothing -> webClient.delete()
+                        .path("/blueprint/rev/a21be2b45")
+                        .request())
+                .thenCompose(response -> {
+                    Assertions.assertEquals(200, response.status().code());
+                    return response.content().as(JsonNode.class);
+                })
+                .thenAccept(jsonNode -> {
+                    Assertions.assertEquals(1, jsonNode.get("nodesDeleted").numberValue());
+                    Assertions.assertEquals(0, jsonNode.get("relationshipsDeleted").numberValue());
+                })
                 .exceptionally(throwable -> {
                     Assertions.fail(throwable);
                     return null;
