@@ -53,15 +53,26 @@ public class NotebookProcessor {
 
         List<String> list = null;
         for (JsonNode line : source) {
-            String textLine = line.asText();
-            if ("#!inputs".equals(textLine)) {
+            String textLine = line.asText().trim();
+            // Ignore regular code.
+            if (!textLine.startsWith("#")) {
+                if (list != null) {
+                    list = null;
+                }
+                continue;
+            } else {
+                textLine = textLine.substring(1);
+            }
+
+            if ("!inputs".equals(textLine)) {
                 list = notebook.inputs;
                 continue;
             }
-            if ("#!outputs".equals(textLine)) {
+            if ("!outputs".equals(textLine)) {
                 list = notebook.outputs;
                 continue;
             }
+
             if (list != null) {
                 list.add(textLine.trim());
             }

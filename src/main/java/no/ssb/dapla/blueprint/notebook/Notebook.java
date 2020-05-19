@@ -1,5 +1,6 @@
 package no.ssb.dapla.blueprint.notebook;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -11,6 +12,6 @@ public class Notebook {
     public String commitId;
     public String fileName;
     public String path;
-    public List<String> inputs;
-    public List<String> outputs;
+    public List<String> inputs = new ArrayList<>();
+    public List<String> outputs = new ArrayList<>();
 }
