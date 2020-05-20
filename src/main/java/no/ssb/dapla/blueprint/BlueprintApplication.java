@@ -95,7 +95,7 @@ public class BlueprintApplication {
         put(WebServer.class, server);
     }
 
-    private Driver initNeo4jDriver(Config config) {
+    public static Driver initNeo4jDriver(Config config) {
         String host = config.get("host").asString().get();
         int port = config.get("port").asInt().get();
         String username = config.get("username").asString().get();
