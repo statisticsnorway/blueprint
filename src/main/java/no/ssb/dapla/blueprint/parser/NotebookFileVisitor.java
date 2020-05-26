@@ -15,7 +15,7 @@ public class NotebookFileVisitor extends SimpleFileVisitor<Path> {
 
     private static final Logger log = LoggerFactory.getLogger(NotebookFileVisitor.class);
     private final Parser.Options options;
-    private final Pattern fileExtension = Pattern.compile("\\*\\.ipynb");
+    private final Pattern fileExtension = Pattern.compile(".*\\.ipynb");
     private final List<Path> notebooks = new ArrayList<>();
 
     public NotebookFileVisitor(Parser.Options options) {

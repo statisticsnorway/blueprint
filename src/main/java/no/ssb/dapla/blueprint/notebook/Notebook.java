@@ -9,6 +9,8 @@ import java.util.List;
  * Used as a contract btw the parser and the service.
  */
 public class Notebook {
+
+    public String repositoryURL;
     public String commitId;
     public String fileName;
     public String path;
