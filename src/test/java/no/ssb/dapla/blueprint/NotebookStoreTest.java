@@ -3,11 +3,12 @@ package no.ssb.dapla.blueprint;
 import no.ssb.dapla.blueprint.notebook.Notebook;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.neo4j.driver.Driver;
-import org.neo4j.driver.GraphDatabase;
 
 import java.util.List;
 
+@ExtendWith(EmbeddedNeo4jExtension.class)
 class NotebookStoreTest {
     private static final List<String> DS_ONE = List.of(
             "/ds/one/one",
@@ -33,10 +34,8 @@ class NotebookStoreTest {
     private NotebookStore store;
 
     @BeforeEach
-    void setUp() {
-        Driver driver = GraphDatabase.driver("bolt://localhost:7687");
+    void setUp(Driver driver) {
         store = new NotebookStore(driver);
-
     }
 
     @Test

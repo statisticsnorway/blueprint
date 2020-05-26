@@ -21,4 +21,6 @@ module no.ssb.blueprint {
 
     requires info.picocli;
     opens no.ssb.dapla.blueprint.parser to info.picocli;
+
+    exports no.ssb.dapla.blueprint;
 }
