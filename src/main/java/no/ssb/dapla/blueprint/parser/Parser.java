@@ -40,12 +40,16 @@ public final class Parser {
         for (Path notebook : fileVisitor.getNotebooks()) {
             Notebook nb = processor.process(notebook);
             nb.commitId = options.commitId;
+            nb.repositoryURL = options.repositoryURL;
             output.output(nb);
         }
 
     }
 
     public final static class Options {
+
+        @Option(required = true, names = {"-u", "--url"}, description = "Repository URL")
+        String repositoryURL;
 
         @Option(required = true, names = {"-c", "--commit"}, description = "Specify the commit to associate with the graph")
         String commitId;

@@ -43,6 +43,7 @@ class NotebookStoreTest {
     void testInsertNotebook() {
         Notebook notebook = new Notebook();
 
+        notebook.repositoryURL = "repo";
         notebook.commitId = "commitId";
         notebook.path = "/some/path";
         notebook.fileName = "/some/path";
@@ -57,6 +58,7 @@ class NotebookStoreTest {
     void testInsertNotebooksWithMatchingInputOutput() {
         Notebook notebook = new Notebook();
 
+        notebook.repositoryURL = "repo";
         notebook.commitId = "commitId";
         notebook.path = "/some/path";
         notebook.fileName = "/some/path";
@@ -65,6 +67,7 @@ class NotebookStoreTest {
 
         store.addNotebook(notebook);
 
+        notebook.repositoryURL = "repo";
         notebook.commitId = "commitId";
         notebook.path = "/some/other/path";
         notebook.fileName = "/some/other/path";
@@ -79,6 +82,7 @@ class NotebookStoreTest {
 
         Notebook notebook = new Notebook();
 
+        notebook.repositoryURL = "repo";
         notebook.commitId = "commitId1";
         notebook.path = "/some/path";
         notebook.fileName = "/some/path";
@@ -87,6 +91,7 @@ class NotebookStoreTest {
 
         store.addNotebook(notebook);
 
+        notebook.repositoryURL = "repo";
         notebook.commitId = "commitId2";
         notebook.path = "/some/other/path";
         notebook.fileName = "/some/other/path";

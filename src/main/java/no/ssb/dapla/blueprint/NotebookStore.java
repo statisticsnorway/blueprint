@@ -11,7 +11,10 @@ import java.util.Objects;
 public class NotebookStore {
 
     private static final Query INSERT_NOTEBOOK = new Query("""
-            MERGE (rev:GitRevision {commitId:$commitId})
+            MERGE (rev:GitRevision {
+                commitId: $commitId,
+                repositoryURL: $repositoryURL
+            })
                         
             MERGE (rev)-[:MODIFIES]->(nb:Notebook {
                 fileName: $fileName,
@@ -32,7 +35,10 @@ public class NotebookStore {
 
     // Does not work at the moment.
     private static final Query INSERT_NOTEBOOK_NO_COMMIT = new Query("""
-            MERGE (rev:GitRevision {commitId:$commitId})
+            MERGE (rev:GitRevision {
+                commitId: $commitId,
+                repositoryURL: $repositoryURL
+            })
                         
             MERGE (rev)-[:MODIFIES]->(nb:Notebook {
                 fileName: $fileName,
@@ -58,7 +64,10 @@ public class NotebookStore {
     // Works but requires a cleaning pass at the end.
     private static final Query INSERT_NOTEBOOK_FOREACH = new Query("""
                                 
-            MERGE (rev:GitRevision {commitId:$commitId})
+            MERGE (rev:GitRevision {
+                commitId: $commitId,
+                repositoryURL: $repositoryURL
+            })
                         
             MERGE (rev)-[:MODIFIES]->(nb:Notebook {
                 fileName: $fileName,
@@ -89,6 +98,7 @@ public class NotebookStore {
                 parameters.put("fileName", notebook.fileName);
                 parameters.put("path", notebook.path);
                 parameters.put("commitId", notebook.commitId);
+                parameters.put("repositoryURL", notebook.repositoryURL);
                 parameters.put("inputs", notebook.inputs);
                 parameters.put("outputs", notebook.outputs);
                 return tx.run(INSERT_NOTEBOOK.withParameters(parameters));
