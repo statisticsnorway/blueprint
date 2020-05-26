@@ -21,12 +21,12 @@ public class NotebookStore {
             WITH nb
             UNWIND $inputs as input 
                 MERGE (ds:Dataset {path: input, commitId:$commitId})
-                MERGE (nb)-[:CONSUMES]-(ds)
+                MERGE (nb)-[:CONSUMES]->(ds)
 
             WITH nb
             UNWIND $outputs as output
               MERGE (ds:Dataset {path: output, commitId:$commitId})
-              MERGE (nb)-[:PRODUCES]-(ds)
+              MERGE (nb)-[:PRODUCES]->(ds)
                                             
             """);
 
@@ -41,18 +41,18 @@ public class NotebookStore {
                         
             WITH rev, nb
             UNWIND $inputs as input
-            	MATCH (rev)-[:MODIFIES]-(:Notebook)-[]-(eds:Dataset {path: input})
-                MERGE (nb)-[:CONSUMES]-(eds)
+            	MATCH (rev)-[:MODIFIES]->(:Notebook)-[]-(eds:Dataset {path: input})
+                MERGE (nb)-[:CONSUMES]->(eds)
                         
             WITH nb
             UNWIND $inputs as input
                 MERGE (ds:Dataset {path: input})
-                MERGE (nb)-[:CONSUMES]-(ds)
+                MERGE (nb)-[:CONSUMES]->(ds)
                 
             WITH nb
             UNWIND $outputs as output
               MERGE (ds:Dataset {path: output})
-              MERGE (nb)-[:PRODUCES]-(ds)
+              MERGE (nb)-[:PRODUCES]->(ds)
             """);
 
     // Works but requires a cleaning pass at the end.
