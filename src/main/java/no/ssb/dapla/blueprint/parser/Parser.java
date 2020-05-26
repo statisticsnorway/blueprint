@@ -56,10 +56,10 @@ public final class Parser {
         @Option(required = true, names = "--host", description = "Neo4J host")
         URI host;
 
-        @Option(names = "--user", description = "Neo4J host")
+        @Option(names = "--user", description = "Neo4J username")
         String user;
 
-        @Option(names = "--password", description = "Neo4J host")
+        @Option(names = "--password", description = "Neo4J password")
         String password;
 
         @Parameters(paramLabel = "ROOT", description = "the root file where to search for notebooks")
