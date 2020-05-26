@@ -30,6 +30,52 @@ public class NotebookStore {
                                             
             """);
 
+    // Does not work at the moment.
+    private static final Query INSERT_NOTEBOOK_NO_COMMIT = new Query("""
+            MERGE (rev:GitRevision {commitId:$commitId})
+                        
+            MERGE (rev)-[:MODIFIES]->(nb:Notebook {
+                fileName: $fileName,
+                path: $path
+            })
+                        
+            WITH rev, nb
+            UNWIND $inputs as input
+            	MATCH (rev)-[:MODIFIES]-(:Notebook)-[]-(eds:Dataset {path: input})
+                MERGE (nb)-[:CONSUMES]-(eds)
+                        
+            WITH nb
+            UNWIND $inputs as input
+                MERGE (ds:Dataset {path: input})
+                MERGE (nb)-[:CONSUMES]-(ds)
+                
+            WITH nb
+            UNWIND $outputs as output
+              MERGE (ds:Dataset {path: output})
+              MERGE (nb)-[:PRODUCES]-(ds)
+            """);
+
+    // Works but requires a cleaning pass at the end.
+    private static final Query INSERT_NOTEBOOK_FOREACH = new Query("""
+                                
+            MERGE (rev:GitRevision {commitId:$commitId})
+                        
+            MERGE (rev)-[:MODIFIES]->(nb:Notebook {
+                fileName: $fileName,
+                path: $path
+            })
+                    
+            FOREACH (input IN $inputs |
+              MERGE (r)<-[:TmpGitRev]-(ds:Dataset {path: input})
+              MERGE (nb)-[:CONSUMES]->(ds)
+            )
+            FOREACH (output IN $outputs |
+              MERGE (r)<-[:TmpGitRev]-(ds:Dataset {path: output})
+              MERGE (nb)-[:PRODUCES]->(ds)
+            )
+                           
+            """);
+
     private final Driver driver;
 
     public NotebookStore(Driver driver) {
