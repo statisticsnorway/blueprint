@@ -19,6 +19,7 @@ import java.util.Comparator;
 public class EmbeddedNeo4jExtension implements BeforeAllCallback, AfterAllCallback, ParameterResolver {
     private DatabaseManagementService managementService;
     private File databaseFolder;
+    private Driver driver;
 
     @Override
     public void afterAll(ExtensionContext extensionContext) throws IOException {
@@ -51,6 +52,7 @@ public class EmbeddedNeo4jExtension implements BeforeAllCallback, AfterAllCallba
                 .setConfig(BoltConnector.enabled, true)
                 .setConfig(BoltConnector.listen_address, new SocketAddress("localhost", 7687))
                 .build();
+        driver = GraphDatabase.driver("bolt://localhost:7687");
     }
 
     @Override
@@ -60,6 +62,6 @@ public class EmbeddedNeo4jExtension implements BeforeAllCallback, AfterAllCallba
 
     @Override
     public Object resolveParameter(ParameterContext parameterContext, ExtensionContext extensionContext) throws ParameterResolutionException {
-        return GraphDatabase.driver("bolt://localhost:7687");
+        return driver;
     }
 }
