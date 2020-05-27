@@ -7,24 +7,25 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.neo4j.driver.Driver;
 
 import java.util.List;
+import java.util.Set;
 
 @ExtendWith(EmbeddedNeo4jExtension.class)
 class NotebookStoreTest {
-    private static final List<String> DS_ONE = List.of(
+    private static final Set<String> DS_ONE = Set.of(
             "/ds/one/one",
             "/ds/one/two",
             "/ds/one/three",
             "/ds/one/four"
     );
 
-    private static final List<String> DS_TWO = List.of(
+    private static final Set<String> DS_TWO = Set.of(
             "/ds/two/one",
             "/ds/two/two",
             "/ds/two/three",
             "/ds/two/four"
     );
 
-    private static final List<String> DS_THREE = List.of(
+    private static final Set<String> DS_THREE = Set.of(
             "/ds/three/one",
             "/ds/three/two",
             "/ds/three/three",
