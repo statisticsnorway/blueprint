@@ -1,12 +1,12 @@
 package no.ssb.dapla.blueprint;
 
 import no.ssb.dapla.blueprint.notebook.Notebook;
-import org.neo4j.driver.Driver;
-import org.neo4j.driver.Query;
-import org.neo4j.driver.Session;
+import org.neo4j.driver.Record;
+import org.neo4j.driver.*;
+import org.neo4j.driver.types.Node;
 
-import java.util.HashMap;
-import java.util.Objects;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class NotebookStore {
 
@@ -102,6 +102,51 @@ public class NotebookStore {
                 parameters.put("inputs", notebook.inputs);
                 parameters.put("outputs", notebook.outputs);
                 return tx.run(INSERT_NOTEBOOK.withParameters(parameters));
+            });
+        }
+    }
+
+    public List<Notebook> getNotebooks() {
+        try (Session session = driver.session()) {
+            return session.readTransaction(tx -> {
+                Result result = tx.run("""
+                        MATCH (rev:GitRevision)-[:MODIFIES]->(nb:Notebook)-[t:CONSUMES|PRODUCES]->(ds:Dataset)
+                        RETURN rev, nb, ds, t
+                        """);
+                Map<Node, List<Record>> map = result.stream().collect(
+                        Collectors.groupingBy(record -> record.get("nb").asNode()));
+
+                ArrayList<Notebook> nbResult = new ArrayList<>();
+                for (Node node : map.keySet()) {
+                    Notebook notebook = new Notebook();
+                    notebook.fileName = node.get("fileName").asString();
+                    notebook.path = node.get("path").asString();
+
+                    notebook.repositoryURL = map.get(node).stream()
+                            .map(record -> record.get("rev"))
+                            .map(value -> value.get("repositoryURL").asString())
+                            .findFirst()
+                            .orElseThrow();
+
+                    notebook.commitId = map.get(node).stream()
+                            .map(record -> record.get("rev"))
+                            .map(value -> value.get("commitId").asString())
+                            .findFirst()
+                            .orElseThrow();
+
+                    notebook.outputs = map.get(node).stream()
+                            .filter(record -> record.get("t").asRelationship().hasType("PRODUCES"))
+                            .map(record -> record.get("ds").asNode().get("path").asString())
+                            .collect(Collectors.toSet());
+
+                    notebook.inputs = map.get(node).stream()
+                            .filter(record -> record.get("t").asRelationship().hasType("CONSUMES"))
+                            .map(record -> record.get("ds").asNode().get("path").asString())
+                            .collect(Collectors.toSet());
+
+                    nbResult.add(notebook);
+                }
+                return nbResult;
             });
         }
     }

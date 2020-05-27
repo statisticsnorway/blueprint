@@ -7,7 +7,7 @@ import no.ssb.dapla.blueprint.notebook.Notebook;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.List;
+import java.util.Set;
 
 public class NotebookProcessor {
 
@@ -51,13 +51,13 @@ public class NotebookProcessor {
             throw new IOException("source was not an array");
         }
 
-        List<String> list = null;
+        Set<String> set = null;
         for (JsonNode line : source) {
             String textLine = line.asText().trim();
             // Ignore regular code.
             if (!textLine.startsWith("#")) {
-                if (list != null) {
-                    list = null;
+                if (set != null) {
+                    set = null;
                 }
                 continue;
             } else {
@@ -65,16 +65,16 @@ public class NotebookProcessor {
             }
 
             if ("!inputs".equals(textLine)) {
-                list = notebook.inputs;
+                set = notebook.inputs;
                 continue;
             }
             if ("!outputs".equals(textLine)) {
-                list = notebook.outputs;
+                set = notebook.outputs;
                 continue;
             }
 
-            if (list != null) {
-                list.add(textLine.trim());
+            if (set != null) {
+                set.add(textLine.trim());
             }
         }
     }
