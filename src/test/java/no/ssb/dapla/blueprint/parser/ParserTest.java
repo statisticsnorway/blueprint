@@ -3,6 +3,7 @@ package no.ssb.dapla.blueprint.parser;
 import no.ssb.dapla.blueprint.EmbeddedNeo4jExtension;
 import no.ssb.dapla.blueprint.NotebookStore;
 import no.ssb.dapla.blueprint.notebook.Notebook;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.neo4j.driver.Driver;
@@ -17,6 +18,22 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @ExtendWith(EmbeddedNeo4jExtension.class)
 class ParserTest {
+
+    private static Notebook createNotebook(String commit, String repositoryURL, String path, Set<String> inputs, Set<String> outputs) {
+        Notebook notebook = new Notebook();
+        notebook.commitId = commit;
+        notebook.repositoryURL = repositoryURL;
+        notebook.fileName = Path.of(path).getFileName().toString();
+        notebook.path = path;
+        notebook.inputs = inputs;
+        notebook.outputs = outputs;
+        return notebook;
+    }
+
+    @BeforeEach
+    void setUp(Driver driver) {
+        driver.session().writeTransaction(tx -> tx.run("MATCH (n) DETACH DELETE n"));
+    }
 
     @Test
     void testCommit1(Driver driver) throws IOException {
@@ -54,17 +71,6 @@ class ParserTest {
         List<Notebook> notebooks = store.getNotebooks();
         assertThat(notebooks).usingFieldByFieldElementComparator()
                 .containsExactlyInAnyOrder(familyNotebook, skattNotebook, fregNotebook);
-    }
-
-    private Notebook createNotebook(String commit, String repositoryURL, String path, Set<String> inputs, Set<String> outputs) {
-        Notebook notebook = new Notebook();
-        notebook.commitId = commit;
-        notebook.repositoryURL = repositoryURL;
-        notebook.fileName = Path.of(path).getFileName().toString();
-        notebook.path = path;
-        notebook.inputs = inputs;
-        notebook.outputs = outputs;
-        return notebook;
     }
 
     @Test
