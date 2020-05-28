@@ -2,10 +2,10 @@ package no.ssb.dapla.blueprint.git;
 
 
 import com.fasterxml.jackson.databind.JsonNode;
+import io.helidon.config.Config;
 import no.ssb.dapla.blueprint.parser.Parser;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
-import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
 import org.eclipse.jgit.util.FileUtils;
 import org.slf4j.Logger;
@@ -18,6 +18,8 @@ import java.io.IOException;
 import java.net.URI;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+
+import static io.helidon.config.ConfigSources.classpath;
 
 public class GitHandler {
 
@@ -50,28 +52,35 @@ public class GitHandler {
     }
 
     public static void handleHook(JsonNode payload) {
+
+        Config config = Config
+                .builder(classpath("application-dev.yaml"), // TODO how to use env specific config?
+                        classpath("application.yaml"))
+                .metaConfig()
+                .build();
+        Config neo4jConfig = config.get("neo4j");
+
+        String dbUrl = "bolt://" + neo4jConfig.get("host").asString().get() + ":" + neo4jConfig.get("port").asInt().get();
+
         String repoUrl = payload.get("repository").get("clone_url").textValue();
         try {
-            Git git = Git.cloneRepository()
+            Git.cloneRepository()
                     .setURI(repoUrl)
                     .setCredentialsProvider(
                             new UsernamePasswordCredentialsProvider( // TODO from env vars
                                     "", ""))
                     .call();
 
-            Repository repo = git.getRepository();
-
             Parser.Options options = new Parser.Options();
             options.commitId = payload.get("after").textValue();
             options.helpRequested = false;
             options.repositoryURL = repoUrl;
-            options.host = URI.create("bolt://localhost:7687"); // TODO from config
+            options.host = URI.create(dbUrl);
             options.root = new File(payload.get("repository").get("name").textValue());
             Parser.parse(options);
 
         } catch (GitAPIException e) {
-            e.printStackTrace();
-            // TODO handle
+            LOG.error("Error connecting to remote repository", e);
         } finally {
             // delete local repo
             String localRepoPath = payload.get("repository").get("name").textValue();

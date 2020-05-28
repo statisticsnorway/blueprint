@@ -13,13 +13,13 @@ import io.helidon.webserver.WebServer;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.TimeUnit;
-
-import static io.helidon.config.ConfigSources.classpath;
 
 public class BlueprintTest {
 
@@ -35,14 +35,19 @@ public class BlueprintTest {
     }
 
     private static WebServer webServer;
+    private static Config config;
+
+    @RegisterExtension
+    static final TestConfigExtension configExtension = new TestConfigExtension();
+
+    @Order(0)
+    @BeforeAll
+    static void setUpConfig() {
+        config = configExtension.getConfig();
+    }
 
     @BeforeAll
     public static void startTheServer() {
-        Config config = Config
-                .builder(classpath("application-dev.yaml"),
-                        classpath("application.yaml"))
-                .metaConfig()
-                .build();
         Neo4J.initializeEmbedded(config.get("neo4j"));
         long webServerStart = System.currentTimeMillis();
         webServer = new BlueprintApplication(config).get(WebServer.class);

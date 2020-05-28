@@ -1,11 +1,16 @@
 package no.ssb.dapla.blueprint.parser;
 
+import io.helidon.config.Config;
 import no.ssb.dapla.blueprint.EmbeddedNeo4jExtension;
 import no.ssb.dapla.blueprint.NotebookStore;
+import no.ssb.dapla.blueprint.TestConfigExtension;
 import no.ssb.dapla.blueprint.notebook.Notebook;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.neo4j.driver.Driver;
 
 import java.io.File;
@@ -30,6 +35,18 @@ class ParserTest {
         return notebook;
     }
 
+    private static String dbUrl;
+
+    @RegisterExtension
+    static final TestConfigExtension configExtension = new TestConfigExtension();
+
+    @Order(0)
+    @BeforeAll
+    static void setUpConfig() {
+        Config neo4jConfig = configExtension.getConfig().get("neo4j");
+        dbUrl = "bolt://" + neo4jConfig.get("host").asString().get() + ":" + neo4jConfig.get("port").asInt().get();
+    }
+
     @BeforeEach
     void setUp(Driver driver) {
         driver.session().writeTransaction(tx -> tx.run("MATCH (n) DETACH DELETE n"));
@@ -40,7 +57,7 @@ class ParserTest {
         Parser.main(
                 "-c", "commit1",
                 "--url", "http://github.com/test/test",
-                "--host", "bolt://localhost:7687", new File("src/test/resources/notebooks/graph/commit1").toString()
+                "--host", dbUrl, new File("src/test/resources/notebooks/graph/commit1").toString()
         );
         NotebookStore store = new NotebookStore(driver);
 
@@ -78,7 +95,7 @@ class ParserTest {
         Parser.main(
                 "-c", "commit2",
                 "--url", "http://github.com/test/test",
-                "--host", "bolt://localhost:7687", new File("src/test/resources/notebooks/graph/commit2").toString()
+                "--host", dbUrl, new File("src/test/resources/notebooks/graph/commit2").toString()
         );
         NotebookStore store = new NotebookStore(driver);
 
