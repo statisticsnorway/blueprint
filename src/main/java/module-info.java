@@ -18,6 +18,8 @@ module no.ssb.blueprint {
     requires io.helidon.webserver.accesslog;
     requires org.neo4j.driver;
     requires java.annotation;
+    requires io.helidon.media.jsonp.common;
+    requires org.eclipse.jgit;
 
     requires info.picocli;
     opens no.ssb.dapla.blueprint.parser to info.picocli;

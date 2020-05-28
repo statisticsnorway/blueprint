@@ -28,7 +28,7 @@ public class NotebookFileVisitor extends SimpleFileVisitor<Path> {
 
     @Override
     public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
-        if (options.ignores.contains(dir.getFileName().toString())) {
+        if (dir.getFileName() != null && options.ignores.contains(dir.getFileName().toString())) {
             log.warn("ignoring {}", dir);
             return FileVisitResult.SKIP_SUBTREE;
         } else {
