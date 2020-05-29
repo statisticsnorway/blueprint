@@ -13,6 +13,7 @@ import io.helidon.webserver.ServerConfiguration;
 import io.helidon.webserver.WebServer;
 import io.helidon.webserver.WebTracingConfig;
 import io.helidon.webserver.accesslog.AccessLogSupport;
+import no.ssb.dapla.blueprint.health.Neo4jHealthCheck;
 import org.neo4j.driver.AuthTokens;
 import org.neo4j.driver.Driver;
 import org.neo4j.driver.GraphDatabase;
@@ -77,7 +78,8 @@ public class BlueprintApplication {
         put(Driver.class, driver);
 
         HealthSupport health = HealthSupport.builder()
-                .addLiveness(HealthChecks.healthChecks())   // Adds a convenient set of checks
+                .addLiveness(HealthChecks.healthChecks())
+                .addLiveness(new Neo4jHealthCheck(driver))
                 .build();
         MetricsSupport metrics = MetricsSupport.create();
 
