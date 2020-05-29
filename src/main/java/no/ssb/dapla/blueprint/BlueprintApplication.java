@@ -5,11 +5,9 @@ import ch.qos.logback.classic.util.ContextInitializer;
 import io.helidon.config.Config;
 import io.helidon.health.HealthSupport;
 import io.helidon.health.checks.HealthChecks;
-import io.helidon.media.jackson.server.JacksonSupport;
 import io.helidon.metrics.MetricsSupport;
 import io.helidon.openapi.OpenAPISupport;
 import io.helidon.webserver.Routing;
-import io.helidon.webserver.ServerConfiguration;
 import io.helidon.webserver.WebServer;
 import io.helidon.webserver.WebTracingConfig;
 import io.helidon.webserver.accesslog.AccessLogSupport;
@@ -41,6 +39,35 @@ public class BlueprintApplication {
         LOG = LoggerFactory.getLogger(BlueprintApplication.class);
     }
 
+    private final Map<Class<?>, Object> instanceByType = new ConcurrentHashMap<>();
+
+    BlueprintApplication(Config config) {
+        put(Config.class, config);
+
+        Driver driver = initNeo4jDriver(config.get("neo4j"));
+        put(Driver.class, driver);
+
+        HealthSupport health = HealthSupport.builder()
+                .addLiveness(HealthChecks.healthChecks())
+                .addLiveness(new Neo4jHealthCheck(driver))
+                .build();
+        MetricsSupport metrics = MetricsSupport.create();
+
+        BlueprintService blueprintService = new BlueprintService(config, driver);
+
+        WebServer server = WebServer.builder(
+                Routing.builder()
+                        .register(AccessLogSupport.create(config.get("server.access-log")))
+                        .register(WebTracingConfig.create(config.get("tracing")))
+                        .register(OpenAPISupport.create(config))
+                        .register(health)
+                        .register(metrics)
+                        .register("/blueprint", blueprintService)
+                        .build()
+        ).addMediaSupport(io.helidon.media.jackson.common.JacksonSupport.create()).build();
+        put(WebServer.class, server);
+    }
+
     public static void initLogging() {
     }
 
@@ -67,34 +94,6 @@ public class BlueprintApplication {
                     t.printStackTrace(System.err);
                     return null;
                 });
-    }
-
-    private final Map<Class<?>, Object> instanceByType = new ConcurrentHashMap<>();
-
-    BlueprintApplication(Config config) {
-        put(Config.class, config);
-
-        Driver driver = initNeo4jDriver(config.get("neo4j"));
-        put(Driver.class, driver);
-
-        HealthSupport health = HealthSupport.builder()
-                .addLiveness(HealthChecks.healthChecks())
-                .addLiveness(new Neo4jHealthCheck(driver))
-                .build();
-        MetricsSupport metrics = MetricsSupport.create();
-
-        BlueprintService blueprintService = new BlueprintService(config, driver);
-
-        WebServer server = WebServer.create(ServerConfiguration.create(config.get("server")), Routing.builder()
-                .register(AccessLogSupport.create(config.get("server.access-log")))
-                .register(WebTracingConfig.create(config.get("tracing")))
-                .register(JacksonSupport.create())
-                .register(OpenAPISupport.create(config))
-                .register(health)  // "/health"
-                .register(metrics) // "/metrics"
-                .register("/blueprint", blueprintService)
-                .build());
-        put(WebServer.class, server);
     }
 
     public static Driver initNeo4jDriver(Config config) {
