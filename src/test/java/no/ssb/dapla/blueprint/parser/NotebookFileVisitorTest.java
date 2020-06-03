@@ -7,7 +7,9 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -47,9 +49,8 @@ class NotebookFileVisitorTest {
             Files.createFile(path);
         }
 
-        Parser.Options options = new Parser.Options();
-        options.ignores = List.of("ignoreThis", ".ignoreThat");
-        NotebookFileVisitor notebookFileVisitor = new NotebookFileVisitor(options);
+        var ignores = List.of("ignoreThis", ".ignoreThat");
+        NotebookFileVisitor notebookFileVisitor = new NotebookFileVisitor(ignores);
         Files.walkFileTree(tempPath, notebookFileVisitor);
 
         assertThat(notebookFileVisitor.getNotebooks()).containsExactlyInAnyOrder(
@@ -71,8 +72,7 @@ class NotebookFileVisitorTest {
             Files.createFile(path);
         }
 
-        Parser.Options options = new Parser.Options();
-        NotebookFileVisitor notebookFileVisitor = new NotebookFileVisitor(options);
+        NotebookFileVisitor notebookFileVisitor = new NotebookFileVisitor(Collections.emptyList());
         Files.walkFileTree(tempPath, notebookFileVisitor);
 
         assertThat(notebookFileVisitor.getNotebooks()).containsExactlyInAnyOrder(

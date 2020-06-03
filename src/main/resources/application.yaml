@@ -8,6 +8,10 @@ server:
 #      enable: true
 #      max-content-length: 16384
 
+github:
+  username: "username"
+  password: "password"
+
 neo4j:
   host: localhost
   port: 7687

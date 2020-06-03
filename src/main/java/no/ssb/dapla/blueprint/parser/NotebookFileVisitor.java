@@ -7,19 +7,18 @@ import java.nio.file.FileVisitResult;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.regex.Pattern;
 
 public class NotebookFileVisitor extends SimpleFileVisitor<Path> {
 
     private static final Logger log = LoggerFactory.getLogger(NotebookFileVisitor.class);
-    private final Parser.Options options;
+    private final Set<String> ignores;
     private final Pattern fileExtension = Pattern.compile(".*\\.ipynb");
     private final List<Path> notebooks = new ArrayList<>();
 
-    public NotebookFileVisitor(Parser.Options options) {
-        this.options = options;
+    public NotebookFileVisitor(Collection<String> ignores) {
+        this.ignores = new HashSet<>(Objects.requireNonNull(ignores));
     }
 
     public List<Path> getNotebooks() {
@@ -28,7 +27,7 @@ public class NotebookFileVisitor extends SimpleFileVisitor<Path> {
 
     @Override
     public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
-        if (options.ignores.contains(dir.getFileName().toString())) {
+        if (dir.getFileName() != null && ignores.contains(dir.getFileName().toString())) {
             log.warn("ignoring {}", dir);
             return FileVisitResult.SKIP_SUBTREE;
         } else {

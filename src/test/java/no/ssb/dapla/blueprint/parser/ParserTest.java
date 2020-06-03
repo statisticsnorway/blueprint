@@ -8,7 +8,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.neo4j.driver.Driver;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
@@ -18,6 +17,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @ExtendWith(EmbeddedNeo4jExtension.class)
 class ParserTest {
+
+    private Parser parser;
+    private NotebookStore store;
 
     private static Notebook createNotebook(String commit, String repositoryURL, String path, Set<String> inputs, Set<String> outputs) {
         Notebook notebook = new Notebook();
@@ -32,17 +34,19 @@ class ParserTest {
 
     @BeforeEach
     void setUp(Driver driver) {
+        store = new NotebookStore(driver);
+        parser = new Parser(new NotebookFileVisitor(Set.of()), new Neo4jOutput(store));
         driver.session().writeTransaction(tx -> tx.run("MATCH (n) DETACH DELETE n"));
     }
 
     @Test
     void testCommit1(Driver driver) throws IOException {
-        Parser.main(
-                "-c", "commit1",
-                "--url", "http://github.com/test/test",
-                "--host", "bolt://localhost:7687", new File("src/test/resources/notebooks/graph/commit1").toString()
+
+        parser.parse(
+                Path.of("src/test/resources/notebooks/graph/commit1"),
+                "commit1",
+                "http://github.com/test/test"
         );
-        NotebookStore store = new NotebookStore(driver);
 
         Notebook familyNotebook = createNotebook(
                 "commit1",
@@ -74,13 +78,13 @@ class ParserTest {
     }
 
     @Test
-    void testCommit2(Driver driver) throws IOException {
-        Parser.main(
-                "-c", "commit2",
-                "--url", "http://github.com/test/test",
-                "--host", "bolt://localhost:7687", new File("src/test/resources/notebooks/graph/commit2").toString()
+    void testCommit2() throws IOException {
+
+        parser.parse(
+                Path.of("src/test/resources/notebooks/graph/commit2"),
+                "commit2",
+                "http://github.com/test/test"
         );
-        NotebookStore store = new NotebookStore(driver);
 
         Notebook familyNotebook = createNotebook(
                 "commit2",

@@ -12,3 +12,5 @@ neo4j:
 
 tracing:
   enabled: false
+
+git:
