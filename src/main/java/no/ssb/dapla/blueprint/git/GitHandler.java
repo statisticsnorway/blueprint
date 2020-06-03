@@ -51,16 +51,16 @@ public class GitHandler {
         }
     }
 
-    public static void handleHook(JsonNode payload) {
+    public static void handleHook(JsonNode payload, String neo4JUrl) {
 
-        Config config = Config
-                .builder(classpath("application-dev.yaml"), // TODO how to use env specific config?
-                        classpath("application.yaml"))
-                .metaConfig()
-                .build();
-        Config neo4jConfig = config.get("neo4j");
-
-        String dbUrl = "bolt://" + neo4jConfig.get("host").asString().get() + ":" + neo4jConfig.get("port").asInt().get();
+//        Config config = Config
+//                .builder(classpath("application-dev.yaml"), // TODO how to use env specific config?
+//                        classpath("application.yaml"))
+//                .metaConfig()
+//                .build();
+//        Config neo4jConfig = config.get("neo4j");
+//
+//        String dbUrl = "bolt://" + neo4jConfig.get("host").asString().get() + ":" + neo4jConfig.get("port").asInt().get();
 
         String repoUrl = payload.get("repository").get("clone_url").textValue();
         try {
@@ -75,7 +75,7 @@ public class GitHandler {
             options.commitId = payload.get("after").textValue();
             options.helpRequested = false;
             options.repositoryURL = repoUrl;
-            options.host = URI.create(dbUrl);
+            options.host = URI.create(neo4JUrl);
             options.root = new File(payload.get("repository").get("name").textValue());
             Parser.parse(options);
 

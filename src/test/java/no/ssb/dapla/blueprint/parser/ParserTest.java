@@ -1,16 +1,12 @@
 package no.ssb.dapla.blueprint.parser;
 
-import io.helidon.config.Config;
-import no.ssb.dapla.blueprint.EmbeddedNeo4jExtension;
+import no.ssb.dapla.blueprint.BaseTestClass;
+import no.ssb.dapla.blueprint.Neo4jTestContainer;
 import no.ssb.dapla.blueprint.NotebookStore;
-import no.ssb.dapla.blueprint.TestConfigExtension;
 import no.ssb.dapla.blueprint.notebook.Notebook;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.extension.RegisterExtension;
 import org.neo4j.driver.Driver;
 
 import java.io.File;
@@ -21,8 +17,8 @@ import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@ExtendWith(EmbeddedNeo4jExtension.class)
-class ParserTest {
+@ExtendWith(Neo4jTestContainer.class)
+class ParserTest extends BaseTestClass {
 
     private static Notebook createNotebook(String commit, String repositoryURL, String path, Set<String> inputs, Set<String> outputs) {
         Notebook notebook = new Notebook();
@@ -35,25 +31,18 @@ class ParserTest {
         return notebook;
     }
 
-    private static String dbUrl;
-
-    @RegisterExtension
-    static final TestConfigExtension configExtension = new TestConfigExtension();
-
-    @Order(0)
-    @BeforeAll
-    static void setUpConfig() {
-        Config neo4jConfig = configExtension.getConfig().get("neo4j");
-        dbUrl = "bolt://" + neo4jConfig.get("host").asString().get() + ":" + neo4jConfig.get("port").asInt().get();
-    }
-
     @BeforeEach
-    void setUp(Driver driver) {
+    void setUp(Object[] params) {
+        Driver driver = (Driver) params[0];
         driver.session().writeTransaction(tx -> tx.run("MATCH (n) DETACH DELETE n"));
     }
 
     @Test
-    void testCommit1(Driver driver) throws IOException {
+    void testCommit1(Object[] params) throws IOException {
+        assertParams(params);
+        Driver driver = (Driver) params[0];
+        String dbUrl = (String) params[1];
+
         Parser.main(
                 "-c", "commit1",
                 "--url", "http://github.com/test/test",
@@ -91,7 +80,10 @@ class ParserTest {
     }
 
     @Test
-    void testCommit2(Driver driver) throws IOException {
+    void testCommit2(Object[] params) throws IOException {
+        assertParams(params);
+        Driver driver = (Driver) params[0];
+        String dbUrl = (String) params[1];
         Parser.main(
                 "-c", "commit2",
                 "--url", "http://github.com/test/test",

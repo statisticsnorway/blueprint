@@ -94,7 +94,7 @@ public class BlueprintService implements Service {
                 }
                 if (verified) {
                     // do stuff
-                    GitHandler.handleHook(body);
+                    GitHandler.handleHook(body, null); // TODO get from config
                     response.status(200).send();
                 } else {
                     response.status(Http.Status.FORBIDDEN_403);

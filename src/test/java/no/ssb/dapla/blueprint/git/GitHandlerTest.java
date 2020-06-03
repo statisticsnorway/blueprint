@@ -3,10 +3,9 @@ package no.ssb.dapla.blueprint.git;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import io.helidon.config.Config;
-import no.ssb.dapla.blueprint.EmbeddedNeo4jExtension;
+import no.ssb.dapla.blueprint.BaseTestClass;
+import no.ssb.dapla.blueprint.Neo4jTestContainer;
 import no.ssb.dapla.blueprint.NotebookStore;
-import no.ssb.dapla.blueprint.TestConfigExtension;
 import no.ssb.dapla.blueprint.notebook.Notebook;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
@@ -14,13 +13,9 @@ import org.eclipse.jgit.internal.storage.file.FileRepository;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.extension.RegisterExtension;
 import org.neo4j.driver.Driver;
 
 import java.io.File;
@@ -37,25 +32,14 @@ import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@ExtendWith(EmbeddedNeo4jExtension.class)
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class GitHandlerTest {
+@ExtendWith(Neo4jTestContainer.class)
+class GitHandlerTest extends BaseTestClass {
 
     private Path tmpDir;
     private String remoteRepoDir;
 
     private Git remoteGit;
     private JsonNode payload;
-    private Config config;
-
-    @RegisterExtension
-    final TestConfigExtension configExtension = new TestConfigExtension();
-
-    @Order(0)
-    @BeforeAll
-    void setUpConfig() {
-        config = configExtension.getConfig();
-    }
 
     @BeforeEach
     void setUp() throws Exception {
@@ -97,9 +81,12 @@ class GitHandlerTest {
     }
 
     @Test
-    void testHook(Driver driver) throws Exception{
+    void testHook(Object[] params) throws Exception{
+        assertParams(params);
+        Driver driver = (Driver) params[0];
+        String boltUrl = (String) params[1];
         String firstCommitId = payload.get("after").textValue();
-        GitHandler.handleHook(payload);
+        GitHandler.handleHook(payload, boltUrl);
         NotebookStore notebookStore = new NotebookStore(driver);
         List<Notebook> notebooks = notebookStore.getNotebooks();
         assertThat(notebooks.size()).isEqualTo(2);
@@ -107,7 +94,7 @@ class GitHandlerTest {
         // Test new commit
         copyFiles("/notebooks/graph/commit1");
         JsonNode secondPayload = commitToRemote("Second commit from remote repository");
-        GitHandler.handleHook(secondPayload);
+        GitHandler.handleHook(secondPayload, boltUrl);
         assertThat(secondPayload.get("after").textValue()).isNotEqualTo(firstCommitId);
         notebooks = notebookStore.getNotebooks();
 
