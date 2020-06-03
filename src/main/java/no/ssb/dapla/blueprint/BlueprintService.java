@@ -38,7 +38,7 @@ public class BlueprintService implements Service {
                 .put("/rev/{rev}", this::putRevisionHandler)
                 .get("/rev/{rev}", this::getRevisionHandler)
                 .delete("/rev/{rev}", this::deleteRevisionHandler)
-                .post("/gitPushHook", this::postGitPushHook)
+                .post("/githubhook", this::postGitPushHook)
         ;
     }
 

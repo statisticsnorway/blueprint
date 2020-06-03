@@ -62,7 +62,7 @@ public class BlueprintApplication {
                         .register(OpenAPISupport.create(config))
                         .register(health)
                         .register(metrics)
-                        .register("/blueprint", blueprintService)
+                        .register("/api/v1", blueprintService)
                         .build()
         ).addMediaSupport(io.helidon.media.jackson.common.JacksonSupport.create()).build();
         put(WebServer.class, server);
