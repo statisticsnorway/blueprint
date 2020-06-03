@@ -25,18 +25,26 @@ import java.nio.file.Path;
 import java.security.NoSuchAlgorithmException;
 import java.util.Set;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 
 public class GitHookService implements Service {
 
     private static final Logger LOG = LoggerFactory.getLogger(GitHookService.class);
+    private static final Http.ResponseStatus TOO_MANY_REQUESTS = Http.ResponseStatus.create(429, "Too Many Requests");
+    private static final String HOOK_PATH = "/githubhook";
     private final Parser parser;
     private final Config config;
     private final GithubHookVerifier verifier;
+    private final ExecutorService parserExecutor;
 
     public GitHookService(Config config, NotebookStore store) throws NoSuchAlgorithmException {
-        parser = new Parser(new NotebookFileVisitor(Set.of()), new Neo4jOutput(store));
+        this.parser = new Parser(new NotebookFileVisitor(Set.of()), new Neo4jOutput(store));
         this.config = config;
         this.verifier = new GithubHookVerifier(config.get("github.secret").asString().get());
+        // Keeping it simple for now.
+        this.parserExecutor = Executors.newFixedThreadPool(4);
     }
 
     public void handleHook(JsonNode payload) {
@@ -81,17 +89,22 @@ public class GitHookService implements Service {
 
         CompletionStage<JsonNode> payload = request.content().as(JsonNode.class);
 
-        payload.thenAccept(body -> {
+        payload.thenAcceptAsync(body -> {
             handleHook(body);
             response.status(200).send();
-        }).exceptionally(t -> {
-            response.status(500).send(t.getMessage());
+        }, parserExecutor).exceptionally(throwable -> {
+            if (throwable instanceof RejectedExecutionException) {
+                response.status(TOO_MANY_REQUESTS);
+            } else {
+                response.status(500).send(throwable.getMessage());
+            }
+            // TODO: Fix this?
             return null;
         });
     }
 
     @Override
     public void update(Routing.Rules rules) {
-        rules.post("/githubhook", this::postGitPushHook);
+        rules.post(HOOK_PATH, this::postGitPushHook);
     }
 }
