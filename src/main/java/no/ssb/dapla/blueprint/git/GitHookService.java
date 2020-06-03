@@ -19,52 +19,24 @@ import org.eclipse.jgit.util.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
-import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
-import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletionStage;
 
 public class GitHookService implements Service {
 
-    public static final String HMAC_SHA1 = "HmacSHA1";
     private static final Logger LOG = LoggerFactory.getLogger(GitHookService.class);
     private final Parser parser;
     private final Config config;
+    private final GithubHookVerifier verifier;
 
-    public GitHookService(Config config, NotebookStore store) {
+    public GitHookService(Config config, NotebookStore store) throws NoSuchAlgorithmException {
         parser = new Parser(new NotebookFileVisitor(Set.of()), new Neo4jOutput(store));
         this.config = config;
-    }
-
-    public static boolean verifySignature(String signature, String secret, String payload) {
-        if (signature == null || signature.length() != 45) {
-            return false;
-        }
-        final Mac mac;
-        try {
-            mac = Mac.getInstance(HMAC_SHA1);
-            final SecretKeySpec signingKey = new SecretKeySpec(secret.getBytes(), HMAC_SHA1);
-            mac.init(signingKey);
-
-            byte[] bytes = mac.doFinal(payload.getBytes());
-            char[] hash = new char[2 * bytes.length];
-            for (int i = 0; i < bytes.length; i++) {
-                hash[2 * i] = "0123456789abcdef".charAt((bytes[i] & 0xf0) >> 4);
-                hash[2 * i + 1] = "0123456789abcdef".charAt(bytes[i] & 0x0f);
-            }
-            final String expected = "sha1=" + String.valueOf(hash);
-            return signature.equals(expected);
-        } catch (NoSuchAlgorithmException | InvalidKeyException e) {
-            e.printStackTrace();
-            // TODO handle
-            return false;
-        }
+        this.verifier = new GithubHookVerifier(config.get("github.secret").asString().get());
     }
 
     public void handleHook(JsonNode payload) {
@@ -101,31 +73,17 @@ public class GitHookService implements Service {
 
     private void postGitPushHook(ServerRequest request, ServerResponse response) {
 
-        String secret = ""; // TODO get from env variable
+        if (!verifier.verify(request)) {
+            LOG.warn("invalid signature for request {}", request);
+            response.status(Http.Status.FORBIDDEN_403);
+            return;
+        }
+
         CompletionStage<JsonNode> payload = request.content().as(JsonNode.class);
 
-        Optional<String> signature = request.headers().value("X-Hub-Signature");
-
         payload.thenAccept(body -> {
-            boolean verified = false;
-            if (signature.isPresent()) {
-                // Verify signature
-                verified = GitHookService.verifySignature(signature.get(), secret, body.toString());
-            }
-            if (verified) {
-                // do stuff
-
-                // TODO: Implement this as a separate service and add the service in the
-                //   WebServer config/routing.
-                GitHookService handler = new GitHookService(null, null);
-                handler.handleHook(body);
-                // GitHandler.handleHook(body, null);
-
-                response.status(200).send();
-            } else {
-                response.status(Http.Status.FORBIDDEN_403);
-            }
-
+            handleHook(body);
+            response.status(200).send();
         }).exceptionally(t -> {
             response.status(500).send(t.getMessage());
             return null;
