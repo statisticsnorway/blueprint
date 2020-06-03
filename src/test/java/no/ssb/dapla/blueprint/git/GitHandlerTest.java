@@ -41,6 +41,8 @@ class GitHandlerTest {
     @BeforeEach
     void setUp(Config config, Driver driver) throws Exception {
 
+        driver.session().writeTransaction(tx -> tx.run("MATCH (n) DETACH DELETE n"));
+
         handler = new GitHandler(config, new NotebookStore(driver));
 
         // set up local and fake remote Git repo
@@ -80,8 +82,7 @@ class GitHandlerTest {
     }
 
     @Test
-    void testHook(Driver driver, Object[] params) throws Exception {
-        String boltUrl = (String) params[1];
+    void testHook(Driver driver) throws Exception {
         String firstCommitId = payload.get("after").textValue();
         handler.handleHook(payload);
         NotebookStore notebookStore = new NotebookStore(driver);

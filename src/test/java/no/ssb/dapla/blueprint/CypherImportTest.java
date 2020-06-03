@@ -1,9 +1,8 @@
 package no.ssb.dapla.blueprint;
 
-import io.helidon.config.Config;
 import no.ssb.dapla.blueprint.notebook.Notebook;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.neo4j.driver.Driver;
 import org.neo4j.driver.Result;
 import org.neo4j.driver.Session;
@@ -14,9 +13,10 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.helidon.config.ConfigSources.classpath;
 import static org.neo4j.driver.Values.parameters;
 
+@Deprecated
+@ExtendWith(EmbeddedNeo4jExtension.class)
 public class CypherImportTest {
 
     private static final Logger LOG = LoggerFactory.getLogger(CypherImportTest.class);
@@ -25,24 +25,8 @@ public class CypherImportTest {
         BlueprintApplication.initLogging();
     }
 
-    private static Driver driver;
-
-    @BeforeAll
-    public static void initNeo4J() {
-        Config config = Config
-                .builder(classpath("application-dev.yaml"),
-                        classpath("application.yaml"))
-                .metaConfig()
-                .build();
-        Neo4J.initializeEmbedded(config.get("neo4j"));
-        driver = BlueprintApplication.initNeo4jDriver(config.get("neo4j"));
-        //try (Session session = driver.session()) {
-        //    session.writeTransaction(tx -> tx.run("CREATE CONSTRAINT ON (r:GitRevision) ASSERT r.revision IS UNIQUE").consume());
-        //}
-    }
-
     @Test
-    public void thatBulkImportOfNotebooksWorks() {
+    public void thatBulkImportOfNotebooksWorks(Driver driver) {
         final String commitId = "a32bf418ea";
 
         List<Notebook> notebookList = createSkattFregFamNotebooks(commitId);

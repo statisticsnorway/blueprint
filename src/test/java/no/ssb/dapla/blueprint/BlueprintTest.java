@@ -10,17 +10,16 @@ import io.helidon.media.common.DefaultMediaSupport;
 import io.helidon.media.jackson.common.JacksonSupport;
 import io.helidon.webclient.WebClient;
 import io.helidon.webserver.WebServer;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Order;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.TimeUnit;
 
+@Disabled
+@ExtendWith({HelidonConfigExtension.class})
 public class BlueprintTest {
 
     private static final Logger LOG = LoggerFactory.getLogger(BlueprintTest.class);
