@@ -32,4 +32,4 @@ stages:
         repository: 'prod-bip/ssb/dapla/blueprint'
         command: 'build'
         Dockerfile: 'Dockerfile'
-        tags: '''$(Build.SourceBranchName)-imagescan-$(Build.SourceVersion)'''
+        tags: '$(Build.SourceBranchName)-imagescan-$(Build.SourceVersion)'
