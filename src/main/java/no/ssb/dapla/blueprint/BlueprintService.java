@@ -39,7 +39,6 @@ public class BlueprintService implements Service {
                 .put("/rev/{rev}", this::putRevisionHandler)
                 .get("/rev/{rev}", this::getRevisionHandler)
                 .delete("/rev/{rev}", this::deleteRevisionHandler)
-                .post("/githubhook", this::postGitPushHook)
         ;
     }
 
@@ -77,41 +76,6 @@ public class BlueprintService implements Service {
             response.status(200).send(mapper.createObjectNode()
                     .put("nodesDeleted", nodesDeleted)
                     .put("relationshipsDeleted", relationshipsDeleted));
-        }
-    }
-
-    private void postGitPushHook(ServerRequest request, ServerResponse response) {
-        try (Session ignored = driver.session()) {
-            String secret = ""; // TODO get from env variable
-            CompletionStage<JsonNode> payload = request.content().as(JsonNode.class);
-
-            Optional<String> signature = request.headers().value("X-Hub-Signature");
-
-            payload.thenAccept(body -> {
-                boolean verified = false;
-                if (signature.isPresent()) {
-                    // Verify signature
-                    verified = GitHookService.verifySignature(signature.get(), secret, body.toString());
-                }
-                if (verified) {
-                    // do stuff
-
-                    // TODO: Implement this as a separate service and add the service in the
-                    //   WebServer config/routing.
-                    GitHookService handler = new GitHookService(null, null);
-                    handler.handleHook(body);
-                    // GitHandler.handleHook(body, null);
-
-                    response.status(200).send();
-                } else {
-                    response.status(Http.Status.FORBIDDEN_403);
-                }
-
-            }).exceptionally(t -> {
-                response.status(500).send(t.getMessage());
-                return null;
-            });
-
         }
     }
 }

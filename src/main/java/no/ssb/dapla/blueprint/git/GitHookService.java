@@ -2,7 +2,12 @@ package no.ssb.dapla.blueprint.git;
 
 
 import com.fasterxml.jackson.databind.JsonNode;
+import io.helidon.common.http.Http;
 import io.helidon.config.Config;
+import io.helidon.webserver.Routing;
+import io.helidon.webserver.ServerRequest;
+import io.helidon.webserver.ServerResponse;
+import io.helidon.webserver.Service;
 import no.ssb.dapla.blueprint.NotebookStore;
 import no.ssb.dapla.blueprint.parser.Neo4jOutput;
 import no.ssb.dapla.blueprint.parser.NotebookFileVisitor;
@@ -21,9 +26,11 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CompletionStage;
 
-public class GitHookService {
+public class GitHookService implements Service {
 
     public static final String HMAC_SHA1 = "HmacSHA1";
     private static final Logger LOG = LoggerFactory.getLogger(GitHookService.class);
@@ -90,5 +97,43 @@ public class GitHookService {
                 LOG.error("Failed to delete repo at {}", localRepoPath, e);
             }
         }
+    }
+
+    private void postGitPushHook(ServerRequest request, ServerResponse response) {
+
+        String secret = ""; // TODO get from env variable
+        CompletionStage<JsonNode> payload = request.content().as(JsonNode.class);
+
+        Optional<String> signature = request.headers().value("X-Hub-Signature");
+
+        payload.thenAccept(body -> {
+            boolean verified = false;
+            if (signature.isPresent()) {
+                // Verify signature
+                verified = GitHookService.verifySignature(signature.get(), secret, body.toString());
+            }
+            if (verified) {
+                // do stuff
+
+                // TODO: Implement this as a separate service and add the service in the
+                //   WebServer config/routing.
+                GitHookService handler = new GitHookService(null, null);
+                handler.handleHook(body);
+                // GitHandler.handleHook(body, null);
+
+                response.status(200).send();
+            } else {
+                response.status(Http.Status.FORBIDDEN_403);
+            }
+
+        }).exceptionally(t -> {
+            response.status(500).send(t.getMessage());
+            return null;
+        });
+    }
+
+    @Override
+    public void update(Routing.Rules rules) {
+        rules.post("/githubhook", this::postGitPushHook);
     }
 }
