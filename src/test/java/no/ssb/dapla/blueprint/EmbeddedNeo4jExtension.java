@@ -2,12 +2,7 @@ package no.ssb.dapla.blueprint;
 
 
 import io.helidon.config.Config;
-import org.junit.jupiter.api.extension.AfterAllCallback;
-import org.junit.jupiter.api.extension.BeforeAllCallback;
-import org.junit.jupiter.api.extension.ExtensionContext;
-import org.junit.jupiter.api.extension.ParameterContext;
-import org.junit.jupiter.api.extension.ParameterResolutionException;
-import org.junit.jupiter.api.extension.ParameterResolver;
+import org.junit.jupiter.api.extension.*;
 import org.neo4j.configuration.GraphDatabaseSettings;
 import org.neo4j.configuration.connectors.BoltConnector;
 import org.neo4j.configuration.helpers.SocketAddress;
@@ -22,10 +17,14 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
 
-public class EmbeddedNeo4jExtension extends TestConfigExtension implements BeforeAllCallback, AfterAllCallback, ParameterResolver {
+import static io.helidon.config.ConfigSources.classpath;
+
+public class EmbeddedNeo4jExtension implements BeforeAllCallback, AfterAllCallback, ParameterResolver {
+
     private DatabaseManagementService managementService;
     private File databaseFolder;
     private Driver driver;
+    private Config config;
 
     @Override
     public void afterAll(ExtensionContext extensionContext) throws IOException {
@@ -47,13 +46,19 @@ public class EmbeddedNeo4jExtension extends TestConfigExtension implements Befor
 
     @Override
     public void beforeAll(ExtensionContext extensionContext) throws Exception {
+
+        this.config = Config.builder(
+                classpath("application-dev.yaml"),
+                classpath("application.yaml")
+        ).metaConfig().build();
+
+        Config neo4jConfig = this.config.get("neo4j");
+        String host = neo4jConfig.get("host").asString().get();
+        int port = neo4jConfig.get("port").asInt().get();
+
         Path tempFile = Files.createTempDirectory("junit-neo4j-db-");
         databaseFolder = tempFile.toFile();
         databaseFolder.deleteOnExit();
-
-        Config neo4jConfig = getConfig().get("neo4j");
-        String host = neo4jConfig.get("host").asString().get();
-        int port = neo4jConfig.get("port").asInt().get();
 
         managementService = new DatabaseManagementServiceBuilder(databaseFolder)
                 .setConfig(GraphDatabaseSettings.pagecache_memory, "512M")
@@ -67,11 +72,19 @@ public class EmbeddedNeo4jExtension extends TestConfigExtension implements Befor
 
     @Override
     public boolean supportsParameter(ParameterContext parameterContext, ExtensionContext extensionContext) throws ParameterResolutionException {
-        return parameterContext.getParameter().getType().equals(Driver.class);
+        Class<?> type = parameterContext.getParameter().getType();
+        return type.equals(Driver.class) || type.equals(Config.class);
     }
 
     @Override
     public Object resolveParameter(ParameterContext parameterContext, ExtensionContext extensionContext) throws ParameterResolutionException {
+        Class<?> type = parameterContext.getParameter().getType();
+        if (type.equals(Driver.class)) {
+            return driver;
+        }
+        if (type.equals(Config.class)) {
+            return config;
+        }
         return driver;
     }
 }

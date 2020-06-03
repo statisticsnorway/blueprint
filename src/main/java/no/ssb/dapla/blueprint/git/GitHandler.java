@@ -3,6 +3,9 @@ package no.ssb.dapla.blueprint.git;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import io.helidon.config.Config;
+import no.ssb.dapla.blueprint.NotebookStore;
+import no.ssb.dapla.blueprint.parser.Neo4jOutput;
+import no.ssb.dapla.blueprint.parser.NotebookFileVisitor;
 import no.ssb.dapla.blueprint.parser.Parser;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
@@ -15,16 +18,22 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.File;
 import java.io.IOException;
-import java.net.URI;
+import java.nio.file.Path;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
-
-import static io.helidon.config.ConfigSources.classpath;
+import java.util.Set;
 
 public class GitHandler {
 
-    private static final Logger LOG = LoggerFactory.getLogger(GitHandler.class);
     public static final String HMAC_SHA1 = "HmacSHA1";
+    private static final Logger LOG = LoggerFactory.getLogger(GitHandler.class);
+    private final Parser parser;
+    private final Config config;
+
+    public GitHandler(Config config, NotebookStore store) {
+        parser = new Parser(new NotebookFileVisitor(Set.of()), new Neo4jOutput(store));
+        this.config = config;
+    }
 
     public static boolean verifySignature(String signature, String secret, String payload) {
         if (signature == null || signature.length() != 45) {
@@ -51,35 +60,26 @@ public class GitHandler {
         }
     }
 
-    public static void handleHook(JsonNode payload, String neo4JUrl) {
-
-//        Config config = Config
-//                .builder(classpath("application-dev.yaml"), // TODO how to use env specific config?
-//                        classpath("application.yaml"))
-//                .metaConfig()
-//                .build();
-//        Config neo4jConfig = config.get("neo4j");
-//
-//        String dbUrl = "bolt://" + neo4jConfig.get("host").asString().get() + ":" + neo4jConfig.get("port").asInt().get();
+    public void handleHook(JsonNode payload) {
 
         String repoUrl = payload.get("repository").get("clone_url").textValue();
         try {
-            Git.cloneRepository()
-                    .setURI(repoUrl)
-                    .setCredentialsProvider(
-                            new UsernamePasswordCredentialsProvider( // TODO from env vars
-                                    "", ""))
-                    .call();
+            var cloneCall = Git.cloneRepository().setURI(repoUrl);
+            // TODO: Use Key.
+            if (config.get("github.username").hasValue() && config.get("github.password").hasValue()) {
+                cloneCall.setCredentialsProvider(new UsernamePasswordCredentialsProvider(
+                        config.get("github.username").asString().get(),
+                        config.get("github.password").asString().get()
+                ));
+            }
+            cloneCall.call();
 
-            Parser.Options options = new Parser.Options();
-            options.commitId = payload.get("after").textValue();
-            options.helpRequested = false;
-            options.repositoryURL = repoUrl;
-            options.host = URI.create(neo4JUrl);
-            options.root = new File(payload.get("repository").get("name").textValue());
-            Parser.parse(options);
+            var path = Path.of(payload.get("repository").get("name").textValue());
+            var commitId = payload.get("after").textValue();
 
-        } catch (GitAPIException e) {
+            parser.parse(path, commitId, repoUrl);
+
+        } catch (GitAPIException | IOException e) {
             LOG.error("Error connecting to remote repository", e);
         } finally {
             // delete local repo

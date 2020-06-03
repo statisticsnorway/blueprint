@@ -13,11 +13,22 @@ import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 
 import static picocli.CommandLine.Parameters;
 
 public final class Parser {
+
+    private final NotebookFileVisitor visitor;
+    private final NotebookProcessor processor = new NotebookProcessor(new ObjectMapper());
+    private final Output output;
+
+    public Parser(NotebookFileVisitor visitor, Output output) {
+        this.visitor = Objects.requireNonNull(visitor);
+        this.output = Objects.requireNonNull(output);
+    }
 
     public static void main(String... args) throws IOException {
         Options options = CommandLine.populateCommand(new Options(), args);
@@ -32,44 +43,21 @@ public final class Parser {
 
         var driver = GraphDatabase.driver(options.host, auth);
         var output = new Neo4jOutput(new NotebookStore(driver));
-        var processor = new NotebookProcessor(new ObjectMapper());
+        var visitor = new NotebookFileVisitor(new HashSet<>(options.ignores));
 
-        NotebookFileVisitor fileVisitor = new NotebookFileVisitor(options);
-        Files.walkFileTree(options.root.toPath(), fileVisitor);
-
-        for (Path notebook : fileVisitor.getNotebooks()) {
-            Notebook nb = processor.process(notebook);
-            nb.commitId = options.commitId;
-            nb.repositoryURL = options.repositoryURL;
-            output.output(nb);
-        }
+        Parser parser = new Parser(visitor, output);
+        parser.parse(options.root.toPath(), options.commitId, options.repositoryURL);
 
     }
 
-    public static void parse(Options options) {
-
-        var auth = AuthTokens.none();
-        if (options.user != null && options.password != null) {
-            auth = AuthTokens.basic(options.user, options.password);
+    public void parse(Path path, String commitId, String repositoryURL) throws IOException {
+        Files.walkFileTree(path, visitor);
+        for (Path notebook : visitor.getNotebooks()) {
+            Notebook nb = processor.process(notebook);
+            nb.commitId = commitId;
+            nb.repositoryURL = repositoryURL;
+            output.output(nb);
         }
-
-        var driver = GraphDatabase.driver(options.host, auth);
-        var output = new Neo4jOutput(new NotebookStore(driver));
-        var processor = new NotebookProcessor(new ObjectMapper());
-
-        NotebookFileVisitor fileVisitor = new NotebookFileVisitor(options);
-        try {
-            Files.walkFileTree(options.root.toPath(), fileVisitor);
-            for (Path notebook : fileVisitor.getNotebooks()) {
-                Notebook nb = processor.process(notebook);
-                nb.commitId = options.commitId;
-                nb.repositoryURL = options.repositoryURL;
-                output.output(nb);
-            }
-        } catch (IOException e) {
-            e.printStackTrace(); // TODO handle
-        }
-
     }
 
     public final static class Options {

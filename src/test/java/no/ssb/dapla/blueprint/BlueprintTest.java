@@ -35,19 +35,9 @@ public class BlueprintTest {
     }
 
     private static WebServer webServer;
-    private static Config config;
-
-    @RegisterExtension
-    static final TestConfigExtension configExtension = new TestConfigExtension();
-
-    @Order(0)
-    @BeforeAll
-    static void setUpConfig() {
-        config = configExtension.getConfig();
-    }
 
     @BeforeAll
-    public static void startTheServer() {
+    public static void startTheServer(Config config) {
         Neo4J.initializeEmbedded(config.get("neo4j"));
         long webServerStart = System.currentTimeMillis();
         webServer = new BlueprintApplication(config).get(WebServer.class);

@@ -15,6 +15,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.io.IOException;
 
+@Deprecated
 @Testcontainers
 public class Neo4jTestContainer implements BeforeAllCallback, AfterAllCallback, ParameterResolver {
 

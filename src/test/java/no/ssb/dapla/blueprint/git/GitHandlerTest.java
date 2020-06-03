@@ -3,8 +3,8 @@ package no.ssb.dapla.blueprint.git;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import no.ssb.dapla.blueprint.BaseTestClass;
-import no.ssb.dapla.blueprint.Neo4jTestContainer;
+import io.helidon.config.Config;
+import no.ssb.dapla.blueprint.EmbeddedNeo4jExtension;
 import no.ssb.dapla.blueprint.NotebookStore;
 import no.ssb.dapla.blueprint.notebook.Notebook;
 import org.eclipse.jgit.api.Git;
@@ -20,20 +20,15 @@ import org.neo4j.driver.Driver;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.FileVisitResult;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.SimpleFileVisitor;
-import java.nio.file.StandardCopyOption;
+import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.List;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@ExtendWith(Neo4jTestContainer.class)
-class GitHandlerTest extends BaseTestClass {
+@ExtendWith(EmbeddedNeo4jExtension.class)
+class GitHandlerTest {
 
     private Path tmpDir;
     private String remoteRepoDir;
@@ -41,8 +36,12 @@ class GitHandlerTest extends BaseTestClass {
     private Git remoteGit;
     private JsonNode payload;
 
+    private GitHandler handler;
+
     @BeforeEach
-    void setUp() throws Exception {
+    void setUp(Config config, Driver driver) throws Exception {
+
+        handler = new GitHandler(config, new NotebookStore(driver));
 
         // set up local and fake remote Git repo
         tmpDir = Files.createTempDirectory(null);
@@ -81,12 +80,10 @@ class GitHandlerTest extends BaseTestClass {
     }
 
     @Test
-    void testHook(Object[] params) throws Exception{
-        assertParams(params);
-        Driver driver = (Driver) params[0];
+    void testHook(Driver driver, Object[] params) throws Exception {
         String boltUrl = (String) params[1];
         String firstCommitId = payload.get("after").textValue();
-        GitHandler.handleHook(payload, boltUrl);
+        handler.handleHook(payload);
         NotebookStore notebookStore = new NotebookStore(driver);
         List<Notebook> notebooks = notebookStore.getNotebooks();
         assertThat(notebooks.size()).isEqualTo(2);
@@ -94,7 +91,7 @@ class GitHandlerTest extends BaseTestClass {
         // Test new commit
         copyFiles("/notebooks/graph/commit1");
         JsonNode secondPayload = commitToRemote("Second commit from remote repository");
-        GitHandler.handleHook(secondPayload, boltUrl);
+        handler.handleHook(secondPayload);
         assertThat(secondPayload.get("after").textValue()).isNotEqualTo(firstCommitId);
         notebooks = notebookStore.getNotebooks();
 
@@ -105,12 +102,12 @@ class GitHandlerTest extends BaseTestClass {
 
     private void copyFiles(String s) throws IOException {
         Path testNotebooks = Paths.get(GitHandlerTest.class.getResource(s).getPath());
-        Path destionation = Paths.get(remoteRepoDir);
+        Path destination = Paths.get(remoteRepoDir);
         Stream<Path> jupyterNotebooks = Files.walk(testNotebooks, 1);
         jupyterNotebooks.forEach(notebook -> {
             if (notebook.toString().endsWith(".ipynb")) {
                 try {
-                    Files.copy(notebook, destionation.resolve(testNotebooks.relativize(notebook)),
+                    Files.copy(notebook, destination.resolve(testNotebooks.relativize(notebook)),
                             StandardCopyOption.REPLACE_EXISTING);
                 } catch (IOException e) {
                     e.printStackTrace();
