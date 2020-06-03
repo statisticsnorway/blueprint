@@ -81,30 +81,21 @@ public class GitHookService implements Service {
 
     private void postGitPushHook(ServerRequest request, ServerResponse response) {
 
-        if (!verifier.verify(request)) {
-            LOG.warn("invalid signature for request {}", request);
-            response.status(Http.Status.FORBIDDEN_403);
-            return;
-        }
-
         CompletionStage<JsonNode> payload = request.content().as(JsonNode.class);
-
         payload.thenAcceptAsync(body -> {
-            handleHook(body);
-            response.status(200).send();
-        }, parserExecutor).exceptionally(throwable -> {
-            if (throwable instanceof RejectedExecutionException) {
-                response.status(TOO_MANY_REQUESTS);
-            } else {
-                response.status(500).send(throwable.getMessage());
+            try {
+                handleHook(body);
+                response.status(200).send();
+            } catch (RejectedExecutionException ree) {
+                response.status(TOO_MANY_REQUESTS).send();
+            } catch (Exception e) {
+                request.next(e);
             }
-            // TODO: Fix this?
-            return null;
-        });
+        }, parserExecutor);
     }
 
     @Override
     public void update(Routing.Rules rules) {
-        rules.post(HOOK_PATH, this::postGitPushHook);
+        rules.post(HOOK_PATH, verifier, this::postGitPushHook);
     }
 }

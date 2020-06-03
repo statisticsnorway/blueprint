@@ -11,6 +11,7 @@ server:
 github:
   username: "username"
   password: "password"
+  secret: "hook-secret"
 
 neo4j:
   host: localhost
