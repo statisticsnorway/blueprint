@@ -23,14 +23,14 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.Set;
 
-public class GitHandler {
+public class GitHookService {
 
     public static final String HMAC_SHA1 = "HmacSHA1";
-    private static final Logger LOG = LoggerFactory.getLogger(GitHandler.class);
+    private static final Logger LOG = LoggerFactory.getLogger(GitHookService.class);
     private final Parser parser;
     private final Config config;
 
-    public GitHandler(Config config, NotebookStore store) {
+    public GitHookService(Config config, NotebookStore store) {
         parser = new Parser(new NotebookFileVisitor(Set.of()), new Neo4jOutput(store));
         this.config = config;
     }

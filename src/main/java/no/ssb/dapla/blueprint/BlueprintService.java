@@ -8,7 +8,7 @@ import io.helidon.webserver.Routing;
 import io.helidon.webserver.ServerRequest;
 import io.helidon.webserver.ServerResponse;
 import io.helidon.webserver.Service;
-import no.ssb.dapla.blueprint.git.GitHandler;
+import no.ssb.dapla.blueprint.git.GitHookService;
 import org.neo4j.driver.Driver;
 import org.neo4j.driver.Result;
 import org.neo4j.driver.Session;
@@ -26,6 +26,7 @@ public class BlueprintService implements Service {
     private static final Logger LOG = LoggerFactory.getLogger(BlueprintService.class);
 
     private static final ObjectMapper mapper = new ObjectMapper();
+
     private final Driver driver;
 
     BlueprintService(Config config, Driver driver) {
@@ -90,14 +91,14 @@ public class BlueprintService implements Service {
                 boolean verified = false;
                 if (signature.isPresent()) {
                     // Verify signature
-                    verified = GitHandler.verifySignature(signature.get(), secret, body.toString());
+                    verified = GitHookService.verifySignature(signature.get(), secret, body.toString());
                 }
                 if (verified) {
                     // do stuff
 
                     // TODO: Implement this as a separate service and add the service in the
                     //   WebServer config/routing.
-                    GitHandler handler = new GitHandler(null, null);
+                    GitHookService handler = new GitHookService(null, null);
                     handler.handleHook(body);
                     // GitHandler.handleHook(body, null);
 
