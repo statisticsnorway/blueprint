@@ -11,6 +11,7 @@ import io.helidon.webserver.Routing;
 import io.helidon.webserver.WebServer;
 import io.helidon.webserver.WebTracingConfig;
 import io.helidon.webserver.accesslog.AccessLogSupport;
+import no.ssb.dapla.blueprint.git.GitHookService;
 import no.ssb.dapla.blueprint.health.Neo4jHealthCheck;
 import org.neo4j.driver.AuthTokens;
 import org.neo4j.driver.Driver;
@@ -55,6 +56,8 @@ public class BlueprintApplication {
 
         BlueprintService blueprintService = new BlueprintService(config, driver);
 
+        GitHookService githubHookService = new GitHookService(config, new NotebookStore(driver));
+
         WebServer server = WebServer.builder(
                 Routing.builder()
                         .register(AccessLogSupport.create(config.get("server.access-log")))
@@ -63,6 +66,7 @@ public class BlueprintApplication {
                         .register(health)
                         .register(metrics)
                         .register("/api/v1", blueprintService)
+                        .register("/api/v1", githubHookService)
                         .build()
         ).addMediaSupport(io.helidon.media.jackson.common.JacksonSupport.create()).build();
         put(WebServer.class, server);
