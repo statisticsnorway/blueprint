@@ -16,6 +16,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.security.NoSuchAlgorithmException;
 import java.util.concurrent.TimeUnit;
 
 @Disabled
@@ -36,7 +37,7 @@ public class BlueprintTest {
     private static WebServer webServer;
 
     @BeforeAll
-    public static void startTheServer(Config config) {
+    public static void startTheServer(Config config) throws NoSuchAlgorithmException {
         Neo4J.initializeEmbedded(config.get("neo4j"));
         long webServerStart = System.currentTimeMillis();
         webServer = new BlueprintApplication(config).get(WebServer.class);
