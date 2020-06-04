@@ -30,6 +30,6 @@ stages:
       inputs:
         containerRegistry: 'gcrServiceConnection'
         repository: 'prod-bip/ssb/dapla/blueprint'
-        command: 'build'
+        command: 'buildAndPush'
         Dockerfile: 'Dockerfile'
         tags: '$(Build.SourceBranchName)-imagescan-$(Build.SourceVersion)'
