@@ -27,9 +27,11 @@ public class BlueprintService implements Service {
 
     private static final ObjectMapper mapper = new ObjectMapper();
     private final Driver driver;
+    private final Config config;
 
     BlueprintService(Config config, Driver driver) {
         this.driver = driver;
+        this.config = config;
     }
 
     @Override
@@ -81,7 +83,7 @@ public class BlueprintService implements Service {
 
     private void postGitPushHook(ServerRequest request, ServerResponse response) {
         try (Session ignored = driver.session()) {
-            String secret = ""; // TODO get from env variable
+            LOG.debug("Receiving hook from GitHub");
             CompletionStage<JsonNode> payload = request.content().as(JsonNode.class);
 
             Optional<String> signature = request.headers().value("X-Hub-Signature");
@@ -89,12 +91,12 @@ public class BlueprintService implements Service {
             payload.thenAccept(body -> {
                 boolean verified = false;
                 if (signature.isPresent()) {
+                    LOG.debug("Verifying signature");
                     // Verify signature
-                    verified = GitHandler.verifySignature(signature.get(), secret, body.toString());
+                    verified = GitHandler.verifySignature(signature.get(), config.get("git.secret").asString().get(), body.toString());
                 }
                 if (verified) {
-                    // do stuff
-
+                    LOG.debug("Signature verified");
                     // TODO: Implement this as a separate service and add the service in the
                     //   WebServer config/routing.
                     GitHandler handler = new GitHandler(null, null);
@@ -103,6 +105,7 @@ public class BlueprintService implements Service {
 
                     response.status(200).send();
                 } else {
+                    LOG.debug("Signature verification failed");
                     response.status(Http.Status.FORBIDDEN_403);
                 }
 

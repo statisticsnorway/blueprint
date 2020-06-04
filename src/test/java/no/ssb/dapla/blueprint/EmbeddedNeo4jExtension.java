@@ -2,7 +2,12 @@ package no.ssb.dapla.blueprint;
 
 
 import io.helidon.config.Config;
-import org.junit.jupiter.api.extension.*;
+import org.junit.jupiter.api.extension.BeforeAllCallback;
+import org.junit.jupiter.api.extension.ExtensionContext;
+import org.junit.jupiter.api.extension.ParameterContext;
+import org.junit.jupiter.api.extension.ParameterResolutionException;
+import org.junit.jupiter.api.extension.ParameterResolver;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.neo4j.configuration.GraphDatabaseSettings;
 import org.neo4j.configuration.connectors.BoltConnector;
 import org.neo4j.configuration.helpers.SocketAddress;
@@ -20,29 +25,23 @@ import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.Objects;
 
-import static io.helidon.config.ConfigSources.classpath;
-
 public class EmbeddedNeo4jExtension implements BeforeAllCallback, ParameterResolver {
 
     private static final Logger logger = LoggerFactory.getLogger(EmbeddedNeo4jExtension.class);
 
     private static final String NEO_KEY = "embedded neo4j";
-    private Config config;
 
     private static ExtensionContext.Store getStore(ExtensionContext extensionContext) {
         return extensionContext.getRoot().getStore(ExtensionContext.Namespace.create(EmbeddedNeo4jExtension.class));
     }
 
+    @RegisterExtension
+    static final HelidonConfigExtension configExtension = new HelidonConfigExtension();
+
     @Override
     public void beforeAll(ExtensionContext extensionContext) throws Exception {
 
-        // TODO: Investigate to see if getting the config from another extension is possible.
-        this.config = Config.builder(
-                classpath("application-dev.yaml"),
-                classpath("application.yaml")
-        ).metaConfig().build();
-
-        Config neo4jConfig = this.config.get("neo4j");
+        Config neo4jConfig = configExtension.getConfig().get("neo4j");
         String host = neo4jConfig.get("host").asString().get();
         int port = neo4jConfig.get("port").asInt().get();
 
@@ -66,7 +65,7 @@ public class EmbeddedNeo4jExtension implements BeforeAllCallback, ParameterResol
             return getStore(extensionContext).get(NEO_KEY, ClosableHolder.class).driver;
         }
         if (type.equals(Config.class)) {
-            return config;
+            return configExtension.getConfig();
         }
         throw new IllegalStateException("resolveParameter called on unsupported parameter type");
     }

@@ -54,8 +54,7 @@ public class GitHandler {
             final String expected = "sha1=" + String.valueOf(hash);
             return signature.equals(expected);
         } catch (NoSuchAlgorithmException | InvalidKeyException e) {
-            e.printStackTrace();
-            // TODO handle
+            LOG.error("Validation of payload failed", e);
             return false;
         }
     }
