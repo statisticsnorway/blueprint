@@ -53,7 +53,7 @@ public class GithubHookVerifier implements Handler {
 
         Optional<String> signatureHeader = request.headers()
                 .value(HEADER_NAME)
-                .filter(value -> value.length() != SIGNATURE_LENGTH);
+                .filter(value -> value.length() == SIGNATURE_LENGTH);
 
         if (signatureHeader.isEmpty()) {
             logger.warn("missing signature for request {}", request);
