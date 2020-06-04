@@ -47,7 +47,7 @@ public class GitHookService implements Service {
         this.parserExecutor = Executors.newFixedThreadPool(4);
     }
 
-    public void handleHook(JsonNode payload) {
+    public void checkoutAndParse(JsonNode payload) {
 
         String repoUrl = payload.get("repository").get("clone_url").textValue();
         try {
@@ -84,7 +84,7 @@ public class GitHookService implements Service {
         CompletionStage<JsonNode> payload = request.content().as(JsonNode.class);
         payload.thenAcceptAsync(body -> {
             try {
-                handleHook(body);
+                checkoutAndParse(body);
                 response.status(200).send();
             } catch (RejectedExecutionException ree) {
                 response.status(TOO_MANY_REQUESTS).send();

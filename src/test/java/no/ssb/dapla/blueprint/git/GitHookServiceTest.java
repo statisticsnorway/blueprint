@@ -84,7 +84,7 @@ class GitHookServiceTest {
     @Test
     void testHook(Driver driver) throws Exception {
         String firstCommitId = payload.get("after").textValue();
-        handler.handleHook(payload);
+        handler.checkoutAndParse(payload);
         NotebookStore notebookStore = new NotebookStore(driver);
         List<Notebook> notebooks = notebookStore.getNotebooks();
         assertThat(notebooks.size()).isEqualTo(2);
@@ -92,7 +92,7 @@ class GitHookServiceTest {
         // Test new commit
         copyFiles("/notebooks/graph/commit1");
         JsonNode secondPayload = commitToRemote("Second commit from remote repository");
-        handler.handleHook(secondPayload);
+        handler.checkoutAndParse(secondPayload);
         assertThat(secondPayload.get("after").textValue()).isNotEqualTo(firstCommitId);
         notebooks = notebookStore.getNotebooks();
 
