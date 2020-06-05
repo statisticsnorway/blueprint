@@ -2,12 +2,10 @@ package no.ssb.dapla.blueprint.git;
 
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.helidon.common.http.Http;
 import io.helidon.config.Config;
-import io.helidon.webserver.Routing;
-import io.helidon.webserver.ServerRequest;
-import io.helidon.webserver.ServerResponse;
-import io.helidon.webserver.Service;
+import io.helidon.webserver.*;
 import no.ssb.dapla.blueprint.NotebookStore;
 import no.ssb.dapla.blueprint.parser.Neo4jOutput;
 import no.ssb.dapla.blueprint.parser.NotebookFileVisitor;
@@ -24,7 +22,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.security.NoSuchAlgorithmException;
 import java.util.Set;
-import java.util.concurrent.CompletionStage;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
@@ -38,6 +36,7 @@ public class GitHookService implements Service {
     private final Config config;
     private final GithubHookVerifier verifier;
     private final ExecutorService parserExecutor;
+    private final ObjectMapper mapper = new ObjectMapper();
 
     public GitHookService(Config config, NotebookStore store) throws NoSuchAlgorithmException {
         this.parser = new Parser(new NotebookFileVisitor(Set.of()), new Neo4jOutput(store));
@@ -79,23 +78,34 @@ public class GitHookService implements Service {
         }
     }
 
-    private void postGitPushHook(ServerRequest request, ServerResponse response) {
+    private void postGitPushHook(ServerRequest request, ServerResponse response, byte[] body) {
+        try {
 
-        CompletionStage<JsonNode> payload = request.content().as(JsonNode.class);
-        payload.thenAcceptAsync(body -> {
-            try {
-                checkoutAndParse(body);
-                response.status(200).send();
-            } catch (RejectedExecutionException ree) {
-                response.status(TOO_MANY_REQUESTS).send();
-            } catch (Exception e) {
-                request.next(e);
+            if (!verifier.checkSignature(request, body)) {
+                response.status(Http.Status.UNAUTHORIZED_401).send();
+                return;
             }
-        }, parserExecutor);
+
+            JsonNode node = mapper.readTree(body);
+            CompletableFuture.runAsync(() -> {
+                checkoutAndParse(node);
+            }, parserExecutor).thenRun(() -> {
+                response.status(200).send();
+            }).exceptionally(throwable -> {
+                if (throwable.getCause() instanceof RejectedExecutionException) {
+                    response.status(TOO_MANY_REQUESTS).send();
+                } else {
+                    request.next(throwable);
+                }
+                return null;
+            });
+        } catch (IOException e) {
+            response.status(Http.Status.BAD_REQUEST_400).send();
+        }
     }
 
     @Override
     public void update(Routing.Rules rules) {
-        rules.post(HOOK_PATH, verifier, this::postGitPushHook);
+        rules.post(HOOK_PATH, Handler.create(byte[].class, this::postGitPushHook));
     }
 }

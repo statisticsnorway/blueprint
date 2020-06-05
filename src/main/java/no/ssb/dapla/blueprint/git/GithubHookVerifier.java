@@ -1,7 +1,6 @@
 package no.ssb.dapla.blueprint.git;
 
 import io.helidon.common.http.Http;
-import io.helidon.webserver.Handler;
 import io.helidon.webserver.ServerRequest;
 import io.helidon.webserver.ServerResponse;
 import org.slf4j.Logger;
@@ -9,12 +8,11 @@ import org.slf4j.LoggerFactory;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
-import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.Objects;
 import java.util.Optional;
 
-public class GithubHookVerifier implements Handler {
+public class GithubHookVerifier {
 
     private static final String HMAC_SHA1 = "HmacSHA1";
     private static final Logger logger = LoggerFactory.getLogger(GitHookService.class);
@@ -48,34 +46,25 @@ public class GithubHookVerifier implements Handler {
         return new String(hash);
     }
 
-    @Override
-    public void accept(ServerRequest request, ServerResponse response) {
+    public Boolean checkSignature(ServerRequest request, byte[] bytes) {
+        try {
+            Optional<String> signatureHeader = request.headers()
+                    .value(HEADER_NAME)
+                    .filter(value -> value.length() == SIGNATURE_LENGTH);
 
-        Optional<String> signatureHeader = request.headers()
-                .value(HEADER_NAME)
-                .filter(value -> value.length() == SIGNATURE_LENGTH);
-
-        if (signatureHeader.isEmpty()) {
-            logger.warn("missing signature for request {}", request);
-            response.status(Http.Status.FORBIDDEN_403).send();
-            return;
-        }
-
-        final String signature = signatureHeader.get();
-        final var threadSafeMac = getThreadSafeMac();
-        request.content().as(byte[].class).thenAccept((byte[] bytes) -> {
-            try {
-                threadSafeMac.init(signingKey);
-                // TODO: Note sure the body.toString() call return the byte signed against.
-                final String expected = SHA_PREFIX + encodeHex(threadSafeMac.doFinal(bytes));
-                if (!expected.equals(signature)) {
-                    response.status(Http.Status.FORBIDDEN_403).send();
-                } else {
-                    request.next();
-                }
-            } catch (InvalidKeyException e) {
-                request.next(e);
+            if (signatureHeader.isEmpty()) {
+                logger.warn("missing signature for request {}", request);
+                return false;
             }
-        });
+
+            final String signature = signatureHeader.get();
+            final var threadSafeMac = getThreadSafeMac();
+            threadSafeMac.init(signingKey);
+            final String expected = SHA_PREFIX + encodeHex(threadSafeMac.doFinal(bytes));
+
+            return expected.equals(signature);
+        } catch (Exception e) {
+            return false;
+        }
     }
 }
