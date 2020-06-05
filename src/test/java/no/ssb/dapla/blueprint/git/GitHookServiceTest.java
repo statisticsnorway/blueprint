@@ -28,7 +28,7 @@ import java.util.stream.Stream;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @ExtendWith(EmbeddedNeo4jExtension.class)
-class GitHandlerTest {
+class GitHookServiceTest {
 
     private Path tmpDir;
     private String remoteRepoDir;
@@ -36,14 +36,14 @@ class GitHandlerTest {
     private Git remoteGit;
     private JsonNode payload;
 
-    private GitHandler handler;
+    private GitHookService handler;
 
     @BeforeEach
     void setUp(Config config, Driver driver) throws Exception {
 
         driver.session().writeTransaction(tx -> tx.run("MATCH (n) DETACH DELETE n"));
 
-        handler = new GitHandler(config, new NotebookStore(driver));
+        handler = new GitHookService(config, new NotebookStore(driver));
 
         // set up local and fake remote Git repo
         tmpDir = Files.createTempDirectory(null);
@@ -84,7 +84,7 @@ class GitHandlerTest {
     @Test
     void testHook(Driver driver) throws Exception {
         String firstCommitId = payload.get("after").textValue();
-        handler.handleHook(payload);
+        handler.checkoutAndParse(payload);
         NotebookStore notebookStore = new NotebookStore(driver);
         List<Notebook> notebooks = notebookStore.getNotebooks();
         assertThat(notebooks.size()).isEqualTo(2);
@@ -92,7 +92,7 @@ class GitHandlerTest {
         // Test new commit
         copyFiles("/notebooks/graph/commit1");
         JsonNode secondPayload = commitToRemote("Second commit from remote repository");
-        handler.handleHook(secondPayload);
+        handler.checkoutAndParse(secondPayload);
         assertThat(secondPayload.get("after").textValue()).isNotEqualTo(firstCommitId);
         notebooks = notebookStore.getNotebooks();
 
@@ -102,7 +102,7 @@ class GitHandlerTest {
     }
 
     private void copyFiles(String s) throws IOException {
-        Path testNotebooks = Paths.get(GitHandlerTest.class.getResource(s).getPath());
+        Path testNotebooks = Paths.get(GitHookServiceTest.class.getResource(s).getPath());
         Path destination = Paths.get(remoteRepoDir);
         Stream<Path> jupyterNotebooks = Files.walk(testNotebooks, 1);
         jupyterNotebooks.forEach(notebook -> {

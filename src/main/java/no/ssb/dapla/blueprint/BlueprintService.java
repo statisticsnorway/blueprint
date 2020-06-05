@@ -8,7 +8,7 @@ import io.helidon.webserver.Routing;
 import io.helidon.webserver.ServerRequest;
 import io.helidon.webserver.ServerResponse;
 import io.helidon.webserver.Service;
-import no.ssb.dapla.blueprint.git.GitHandler;
+import no.ssb.dapla.blueprint.git.GitHookService;
 import org.neo4j.driver.Driver;
 import org.neo4j.driver.Result;
 import org.neo4j.driver.Session;
@@ -26,6 +26,7 @@ public class BlueprintService implements Service {
     private static final Logger LOG = LoggerFactory.getLogger(BlueprintService.class);
 
     private static final ObjectMapper mapper = new ObjectMapper();
+
     private final Driver driver;
 
     BlueprintService(Config config, Driver driver) {
@@ -38,7 +39,6 @@ public class BlueprintService implements Service {
                 .put("/rev/{rev}", this::putRevisionHandler)
                 .get("/rev/{rev}", this::getRevisionHandler)
                 .delete("/rev/{rev}", this::deleteRevisionHandler)
-                .post("/gitPushHook", this::postGitPushHook)
         ;
     }
 
@@ -76,41 +76,6 @@ public class BlueprintService implements Service {
             response.status(200).send(mapper.createObjectNode()
                     .put("nodesDeleted", nodesDeleted)
                     .put("relationshipsDeleted", relationshipsDeleted));
-        }
-    }
-
-    private void postGitPushHook(ServerRequest request, ServerResponse response) {
-        try (Session ignored = driver.session()) {
-            String secret = ""; // TODO get from env variable
-            CompletionStage<JsonNode> payload = request.content().as(JsonNode.class);
-
-            Optional<String> signature = request.headers().value("X-Hub-Signature");
-
-            payload.thenAccept(body -> {
-                boolean verified = false;
-                if (signature.isPresent()) {
-                    // Verify signature
-                    verified = GitHandler.verifySignature(signature.get(), secret, body.toString());
-                }
-                if (verified) {
-                    // do stuff
-
-                    // TODO: Implement this as a separate service and add the service in the
-                    //   WebServer config/routing.
-                    GitHandler handler = new GitHandler(null, null);
-                    handler.handleHook(body);
-                    // GitHandler.handleHook(body, null);
-
-                    response.status(200).send();
-                } else {
-                    response.status(Http.Status.FORBIDDEN_403);
-                }
-
-            }).exceptionally(t -> {
-                response.status(500).send(t.getMessage());
-                return null;
-            });
-
         }
     }
 }

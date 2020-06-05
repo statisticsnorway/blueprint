@@ -8,9 +8,11 @@ import io.helidon.health.checks.HealthChecks;
 import io.helidon.metrics.MetricsSupport;
 import io.helidon.openapi.OpenAPISupport;
 import io.helidon.webserver.Routing;
+import io.helidon.webserver.ServerConfiguration;
 import io.helidon.webserver.WebServer;
 import io.helidon.webserver.WebTracingConfig;
 import io.helidon.webserver.accesslog.AccessLogSupport;
+import no.ssb.dapla.blueprint.git.GitHookService;
 import no.ssb.dapla.blueprint.health.Neo4jHealthCheck;
 import org.neo4j.driver.AuthTokens;
 import org.neo4j.driver.Driver;
@@ -20,6 +22,9 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.security.NoSuchAlgorithmException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.LogManager;
@@ -41,7 +46,7 @@ public class BlueprintApplication {
 
     private final Map<Class<?>, Object> instanceByType = new ConcurrentHashMap<>();
 
-    BlueprintApplication(Config config) {
+    BlueprintApplication(Config config) throws NoSuchAlgorithmException {
         put(Config.class, config);
 
         Driver driver = initNeo4jDriver(config.get("neo4j"));
@@ -55,6 +60,19 @@ public class BlueprintApplication {
 
         BlueprintService blueprintService = new BlueprintService(config, driver);
 
+        GitHookService githubHookService = new GitHookService(config, new NotebookStore(driver));
+
+
+        ServerConfiguration.Builder serverConfig = ServerConfiguration.builder(config);
+        config.get("server.port").asInt().ifPresent(serverConfig::port);
+        config.get("server.host").asString().map(s -> {
+            try {
+                return InetAddress.getByName(s);
+            } catch (UnknownHostException e) {
+                throw new RuntimeException(e);
+            }
+        }).ifPresent(serverConfig::bindAddress);
+
         WebServer server = WebServer.builder(
                 Routing.builder()
                         .register(AccessLogSupport.create(config.get("server.access-log")))
@@ -62,9 +80,10 @@ public class BlueprintApplication {
                         .register(OpenAPISupport.create(config))
                         .register(health)
                         .register(metrics)
-                        .register("/blueprint", blueprintService)
+                        .register("/api/v1", blueprintService)
+                        .register("/api/v1", githubHookService)
                         .build()
-        ).addMediaSupport(io.helidon.media.jackson.common.JacksonSupport.create()).build();
+        ).config(serverConfig).addMediaSupport(io.helidon.media.jackson.common.JacksonSupport.create()).build();
         put(WebServer.class, server);
     }
 
@@ -77,7 +96,7 @@ public class BlueprintApplication {
      * @param args command line arguments.
      * @throws IOException if there are problems reading logging properties
      */
-    public static void main(final String[] args) throws IOException {
+    public static void main(final String[] args) throws IOException, NoSuchAlgorithmException {
         BlueprintApplication app = new BlueprintApplication(Config.create());
 
         // Try to start the server. If successful, print some info and arrange to
@@ -85,7 +104,7 @@ public class BlueprintApplication {
         app.get(WebServer.class).start()
                 .thenAccept(ws -> {
                     System.out.println(
-                            "WEB server is up! http://localhost:" + ws.port() + "/greet");
+                            "WEB server is up! http://" + ws.configuration().bindAddress()+ ":" + ws.port() + "/api/v1/githubhook");
                     ws.whenShutdown().thenRun(()
                             -> System.out.println("WEB server is DOWN. Good bye!"));
                 })
