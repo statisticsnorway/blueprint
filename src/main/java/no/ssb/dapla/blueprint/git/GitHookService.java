@@ -22,16 +22,16 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.security.NoSuchAlgorithmException;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.*;
+
+import static io.helidon.common.http.Http.Status.*;
 
 public class GitHookService implements Service {
 
     private static final Logger LOG = LoggerFactory.getLogger(GitHookService.class);
     private static final Http.ResponseStatus TOO_MANY_REQUESTS = Http.ResponseStatus.create(429, "Too Many Requests");
     private static final String HOOK_PATH = "/githubhook";
+    private static final int GITHOOK_TIMEOUT = 10;
     private final Parser parser;
     private final Config config;
     private final GithubHookVerifier verifier;
@@ -51,7 +51,6 @@ public class GitHookService implements Service {
         String repoUrl = payload.get("repository").get("clone_url").textValue();
         try {
             var cloneCall = Git.cloneRepository().setURI(repoUrl);
-            // TODO: Use Key.
             if (config.get("github.username").hasValue() && config.get("github.password").hasValue()) {
                 cloneCall.setCredentialsProvider(new UsernamePasswordCredentialsProvider(
                         config.get("github.username").asString().get(),
@@ -82,25 +81,31 @@ public class GitHookService implements Service {
         try {
 
             if (!verifier.checkSignature(request, body)) {
-                response.status(Http.Status.UNAUTHORIZED_401).send();
+                response.status(UNAUTHORIZED_401).send();
                 return;
             }
 
             JsonNode node = mapper.readTree(body);
+
+            // Hooks need to respond within GITHOOK_TIMEOUT seconds so we run it async.
             CompletableFuture.runAsync(() -> {
                 checkoutAndParse(node);
-            }, parserExecutor).thenRun(() -> {
-                response.status(200).send();
-            }).exceptionally(throwable -> {
-                if (throwable.getCause() instanceof RejectedExecutionException) {
-                    response.status(TOO_MANY_REQUESTS).send();
+            }, parserExecutor).orTimeout(GITHOOK_TIMEOUT, TimeUnit.SECONDS).handle((parseResult, throwable) -> {
+                if (throwable == null) {
+                    response.status(CREATED_201).send();
+                } else if (throwable instanceof TimeoutException) {
+                    LOG.warn("Could not parse before timeout. Failures won't be reported");
+                    response.status(ACCEPTED_202).send();
                 } else {
                     request.next(throwable);
                 }
                 return null;
             });
-        } catch (IOException e) {
-            response.status(Http.Status.BAD_REQUEST_400).send();
+
+        } catch (RejectedExecutionException ree) {
+            response.status(TOO_MANY_REQUESTS).send();
+        } catch (Exception e) {
+            request.next(e);
         }
     }
 
