@@ -45,4 +45,8 @@ public class NotebookFileVisitor extends SimpleFileVisitor<Path> {
         }
         return FileVisitResult.CONTINUE;
     }
+
+    public void clearNotebooks() {
+        notebooks.clear();
+    }
 }

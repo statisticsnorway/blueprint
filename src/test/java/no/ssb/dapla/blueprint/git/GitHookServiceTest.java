@@ -93,12 +93,20 @@ class GitHookServiceTest {
         copyFiles("/notebooks/graph/commit1");
         JsonNode secondPayload = commitToRemote("Second commit from remote repository");
         handler.checkoutAndParse(secondPayload);
-        assertThat(secondPayload.get("after").textValue()).isNotEqualTo(firstCommitId);
+        String secondCommitId = secondPayload.get("after").textValue();
+        assertThat(secondCommitId).isNotEqualTo(firstCommitId);
         notebooks = notebookStore.getNotebooks();
 
         // TODO is 7 correct here? We have added three new notebooks, but the two original ones are
         // added to Neo4J on both runs
         assertThat(notebooks.size()).isEqualTo(7);
+
+        // Delete file and commit
+        JsonNode deletePayload = deleteFileFromRemote("Delete file", "Freg.ipynb");
+        handler.checkoutAndParse(deletePayload);
+        assertThat(deletePayload.get("after").textValue()).isNotEqualTo(secondCommitId);
+        notebooks = notebookStore.getNotebooks();
+        assertThat(notebooks.size()).isEqualTo(11);
     }
 
     private void copyFiles(String s) throws IOException {
@@ -120,10 +128,24 @@ class GitHookServiceTest {
 
     private JsonNode commitToRemote(String commitMessage) throws GitAPIException {
         remoteGit.add().addFilepattern(".").call();
-        RevCommit firstCommitRevision = remoteGit.commit().setMessage(commitMessage).call();
+        RevCommit commitRevision = remoteGit.commit().setMessage(commitMessage).call();
 
         ObjectNode newPayload = new ObjectMapper().createObjectNode();
-        newPayload.put("after", firstCommitRevision.getId().toString());
+        newPayload.put("after", commitRevision.getId().toString());
+        ObjectNode repoNode = newPayload.putObject("repository");
+        repoNode
+                .put("clone_url", remoteRepoDir + ".git")
+                .put("name", "remoteRepo");
+
+        return newPayload;
+    }
+
+    private JsonNode deleteFileFromRemote(String commitMessage, String filename) throws GitAPIException, IOException {
+        Files.delete(Paths.get(remoteRepoDir + File.separator + filename));
+        remoteGit.rm().addFilepattern(filename).call();
+        RevCommit commitRevision = remoteGit.commit().setMessage(commitMessage).call();
+        ObjectNode newPayload = new ObjectMapper().createObjectNode();
+        newPayload.put("after", commitRevision.getId().toString());
         ObjectNode repoNode = newPayload.putObject("repository");
         repoNode
                 .put("clone_url", remoteRepoDir + ".git")
