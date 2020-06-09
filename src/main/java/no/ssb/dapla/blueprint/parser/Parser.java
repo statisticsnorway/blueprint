@@ -33,6 +33,7 @@ public final class Parser {
     public static void main(String... args) throws IOException {
         Options options = CommandLine.populateCommand(new Options(), args);
         if (options.helpRequested) {
+            CommandLine.usage(new Parser.Options(), System.err);
             return;
         }
 
