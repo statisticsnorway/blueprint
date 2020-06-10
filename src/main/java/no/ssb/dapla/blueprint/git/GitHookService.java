@@ -64,8 +64,10 @@ public class GitHookService implements Service {
 
             parser.parse(path, commitId, repoUrl);
 
-        } catch (GitAPIException | IOException e) {
+        } catch (GitAPIException e) {
             LOG.error("Error connecting to remote repository", e);
+        } catch (IOException e) {
+            LOG.error("Error parsing notebooks", e);
         } finally {
             // delete local repo
             String localRepoPath = payload.get("repository").get("name").textValue();
@@ -88,9 +90,8 @@ public class GitHookService implements Service {
             JsonNode node = mapper.readTree(body);
 
             // Hooks need to respond within GITHOOK_TIMEOUT seconds so we run it async.
-            CompletableFuture.runAsync(() -> {
-                checkoutAndParse(node);
-            }, parserExecutor).orTimeout(GITHOOK_TIMEOUT, TimeUnit.SECONDS).handle((parseResult, throwable) -> {
+            CompletableFuture.runAsync(() -> checkoutAndParse(node),
+                    parserExecutor).orTimeout(GITHOOK_TIMEOUT, TimeUnit.SECONDS).handle((parseResult, throwable) -> {
                 if (throwable == null) {
                     response.status(CREATED_201).send();
                 } else if (throwable instanceof TimeoutException) {

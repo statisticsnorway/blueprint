@@ -52,6 +52,7 @@ public final class Parser {
     }
 
     public void parse(Path path, String commitId, String repositoryURL) throws IOException {
+        visitor.clearNotebooks(); // TODO create new visitor instance for each call from hook
         Files.walkFileTree(path, visitor);
         for (Path notebook : visitor.getNotebooks()) {
             Notebook nb = processor.process(notebook);
