@@ -19,7 +19,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.NoSuchAlgorithmException;
 import java.util.Set;
 import java.util.concurrent.*;
@@ -49,17 +51,22 @@ public class GitHookService implements Service {
     public void checkoutAndParse(JsonNode payload) {
 
         String repoUrl = payload.get("repository").get("clone_url").textValue();
+        Path repoDir = null;
         try {
             var cloneCall = Git.cloneRepository().setURI(repoUrl);
+            // TODO shallow clone. Not yet supported by JGit, see https://bugs.eclipse.org/bugs/show_bug.cgi?id=475615
             if (config.get("github.username").hasValue() && config.get("github.password").hasValue()) {
                 cloneCall.setCredentialsProvider(new UsernamePasswordCredentialsProvider(
                         config.get("github.username").asString().get(),
                         config.get("github.password").asString().get()
                 ));
             }
-            cloneCall.call();
+            repoDir = Files.createTempDirectory(Paths.get(System.getProperty("user.dir")), "repo-");
 
-            var path = Path.of(payload.get("repository").get("name").textValue());
+
+            var path = Path.of(repoDir.getFileName().toString(),
+                    payload.get("repository").get("name").textValue());
+            cloneCall.setDirectory(path.toFile()).call();
             var commitId = payload.get("after").textValue();
 
             parser.parse(path, commitId, repoUrl);
@@ -70,11 +77,12 @@ public class GitHookService implements Service {
             LOG.error("Error parsing notebooks", e);
         } finally {
             // delete local repo
-            String localRepoPath = payload.get("repository").get("name").textValue();
-            try {
-                FileUtils.delete(new File(localRepoPath), FileUtils.RECURSIVE);
-            } catch (IOException e) {
-                LOG.error("Failed to delete repo at {}", localRepoPath, e);
+            if (repoDir != null) {
+                try {
+                    FileUtils.delete(new File(repoDir.toString()), FileUtils.RECURSIVE);
+                } catch (IOException e) {
+                    LOG.error("Failed to delete repo at {}", repoDir.toString(), e);
+                }
             }
         }
     }
