@@ -66,8 +66,11 @@ public class GitHookService implements Service {
 
             var path = Path.of(repoDir.getFileName().toString(),
                     payload.get("repository").get("name").textValue());
-            cloneCall.setDirectory(path.toFile()).call();
-            var commitId = payload.get("after").textValue();
+            Git git = cloneCall.setDirectory(path.toFile()).call();
+            var commitId = payload.get("head_commit").get("id").textValue();
+
+            // Checkout head_commit from repo
+            git.checkout().setName(commitId).call();
 
             parser.parse(path, commitId, repoUrl);
 

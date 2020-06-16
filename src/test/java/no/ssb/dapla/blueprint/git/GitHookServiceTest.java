@@ -83,7 +83,7 @@ class GitHookServiceTest {
 
     @Test
     void testHook(Driver driver) throws Exception {
-        String firstCommitId = payload.get("after").textValue();
+        String firstCommitId = payload.get("head_commit").get("id").textValue();
         handler.checkoutAndParse(payload);
         NotebookStore notebookStore = new NotebookStore(driver);
         List<Notebook> notebooks = notebookStore.getNotebooks();
@@ -93,7 +93,7 @@ class GitHookServiceTest {
         copyFiles("/notebooks/graph/commit1");
         JsonNode secondPayload = commitToRemote("Second commit from remote repository");
         handler.checkoutAndParse(secondPayload);
-        String secondCommitId = secondPayload.get("after").textValue();
+        String secondCommitId = secondPayload.get("head_commit").get("id").textValue();
         assertThat(secondCommitId).isNotEqualTo(firstCommitId);
         notebooks = notebookStore.getNotebooks();
 
@@ -104,9 +104,24 @@ class GitHookServiceTest {
         // Delete file and commit
         JsonNode deletePayload = deleteFileFromRemote("Delete file", "Freg.ipynb");
         handler.checkoutAndParse(deletePayload);
-        assertThat(deletePayload.get("after").textValue()).isNotEqualTo(secondCommitId);
+        assertThat(deletePayload.get("head_commit").get("id").textValue()).isNotEqualTo(secondCommitId);
         notebooks = notebookStore.getNotebooks();
         assertThat(notebooks.size()).isEqualTo(11);
+    }
+
+    @Test
+    void testNotLatestCommit(Driver driver) throws Exception {
+        String firstCommitId = payload.get("head_commit").get("id").textValue();
+
+        // Do a second commit, not included in payload
+        copyFiles("/notebooks/graph/commit1");
+        JsonNode secondPayload = commitToRemote("Second commit from remote repository");
+        assertThat(firstCommitId).isNotEqualTo(secondPayload.get("after").textValue());
+
+        handler.checkoutAndParse(payload);
+        NotebookStore notebookStore = new NotebookStore(driver);
+        List<Notebook> notebooks = notebookStore.getNotebooks();
+        assertThat(notebooks.size()).isEqualTo(2);
     }
 
     private void copyFiles(String s) throws IOException {
@@ -131,7 +146,9 @@ class GitHookServiceTest {
         RevCommit commitRevision = remoteGit.commit().setMessage(commitMessage).call();
 
         ObjectNode newPayload = new ObjectMapper().createObjectNode();
-        newPayload.put("after", commitRevision.getId().toString());
+        newPayload.put("after", commitRevision.getName());
+        ObjectNode commitNode = newPayload.putObject("head_commit");
+        commitNode.put("id", commitRevision.getName());
         ObjectNode repoNode = newPayload.putObject("repository");
         repoNode
                 .put("clone_url", remoteRepoDir + ".git")
@@ -145,7 +162,9 @@ class GitHookServiceTest {
         remoteGit.rm().addFilepattern(filename).call();
         RevCommit commitRevision = remoteGit.commit().setMessage(commitMessage).call();
         ObjectNode newPayload = new ObjectMapper().createObjectNode();
-        newPayload.put("after", commitRevision.getId().toString());
+        newPayload.put("after", commitRevision.getName());
+        ObjectNode commitNode = newPayload.putObject("head_commit");
+        commitNode.put("id", commitRevision.getName());
         ObjectNode repoNode = newPayload.putObject("repository");
         repoNode
                 .put("clone_url", remoteRepoDir + ".git")
