@@ -34,14 +34,14 @@ public class GitHookService implements Service {
     private static final Http.ResponseStatus TOO_MANY_REQUESTS = Http.ResponseStatus.create(429, "Too Many Requests");
     private static final String HOOK_PATH = "/githubhook";
     private static final int GITHOOK_TIMEOUT = 10;
-    private final Parser parser;
     private final Config config;
     private final GithubHookVerifier verifier;
     private final ExecutorService parserExecutor;
     private final ObjectMapper mapper = new ObjectMapper();
+    private final NotebookStore store;
 
     public GitHookService(Config config, NotebookStore store) throws NoSuchAlgorithmException {
-        this.parser = new Parser(new NotebookFileVisitor(Set.of()), new Neo4jOutput(store));
+        this.store = store;
         this.config = config;
         this.verifier = new GithubHookVerifier(config.get("github.secret").asString().get());
         // Keeping it simple for now.
@@ -71,6 +71,7 @@ public class GitHookService implements Service {
 
             // Checkout head_commit from repo
             git.checkout().setName(commitId).call();
+            Parser parser = new Parser(new NotebookFileVisitor(Set.of()), new Neo4jOutput(store));
 
             parser.parse(path, commitId, repoUrl);
 
