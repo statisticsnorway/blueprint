@@ -16,12 +16,13 @@ import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 import static picocli.CommandLine.Parameters;
 
 public final class Parser {
 
-    private final NotebookFileVisitor visitor;
+    private NotebookFileVisitor visitor;
     private final NotebookProcessor processor = new NotebookProcessor(new ObjectMapper());
     private final Output output;
 
@@ -52,7 +53,6 @@ public final class Parser {
     }
 
     public void parse(Path path, String commitId, String repositoryURL) throws IOException {
-        visitor.clearNotebooks(); // TODO create new visitor instance for each call from hook
         Files.walkFileTree(path, visitor);
         for (Path notebook : visitor.getNotebooks()) {
             Notebook nb = processor.process(notebook);

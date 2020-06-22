@@ -13,7 +13,6 @@ import org.eclipse.jgit.internal.storage.file.FileRepository;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.neo4j.driver.Driver;
@@ -22,7 +21,9 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -30,93 +31,195 @@ import static org.assertj.core.api.Assertions.assertThat;
 @ExtendWith(EmbeddedNeo4jExtension.class)
 class GitHookServiceTest {
 
-    private Path tmpDir;
-    private String remoteRepoDir;
-
-    private Git remoteGit;
-    private JsonNode payload;
+    private static final String REMOTE_REPO_BASE_NAME = "remoteRepo_";
+    private static final String NOTEBOOK_NAME = "notebook-with-metadata";
+    private static final String NOTEBOOK_FILE_EXTENSION = ".ipynb";
+    private List<Path> tmpDirList = new ArrayList<>();
 
     private GitHookService handler;
 
-    @BeforeEach
-    void setUp(Config config, Driver driver) throws Exception {
+
+    Git createRemoteRepo(Config config, Driver driver, int repoCounter) throws Exception {
 
         driver.session().writeTransaction(tx -> tx.run("MATCH (n) DETACH DELETE n"));
 
         handler = new GitHookService(config, new NotebookStore(driver));
 
         // set up local and fake remote Git repo
-        tmpDir = Files.createTempDirectory(null);
+        tmpDirList.add(Files.createTempDirectory(null));
 
         // Copy the test notebook directory from the test/resources/*.ipynb folder to the fake remote Git directory
-        String remoteRepoDirName = "remoteRepo";
-        remoteRepoDir = String.join(File.separator, tmpDir.toString(), remoteRepoDirName) + File.separator;
+        String remoteRepoDirName = REMOTE_REPO_BASE_NAME + repoCounter;
+        String remoteRepoDir = String.join(File.separator, tmpDirList.get(repoCounter).toString(), remoteRepoDirName) + File.separator;
         Files.createDirectory(Paths.get(remoteRepoDir));
-        copyFiles("/notebooks");
+        copyFiles("/notebooks", remoteRepoDir);
 
         // Create the fake remote Git repo
         Repository remoteRepo = new FileRepository(remoteRepoDir + ".git");
         remoteRepo.create();
 
-        remoteGit = new Git(remoteRepo);
-        payload = commitToRemote("First commit from remote repository");
+        return new Git(remoteRepo);
     }
 
     @AfterEach
     void tearDown() throws IOException {
-        Files.walkFileTree(tmpDir, new SimpleFileVisitor<>() {
-            public FileVisitResult visitFile(Path path, BasicFileAttributes attrs) throws IOException {
-                Files.delete(path);
-                return FileVisitResult.CONTINUE;
-            }
-
-            public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
-                if (exc != null) {
-                    throw exc;
-                } else {
-                    Files.delete(dir);
+        for (Path tmpDir : tmpDirList) {
+            Files.walkFileTree(tmpDir, new SimpleFileVisitor<>() {
+                public FileVisitResult visitFile(Path path, BasicFileAttributes attrs) throws IOException {
+                    Files.delete(path);
                     return FileVisitResult.CONTINUE;
                 }
-            }
-        });
+
+                public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+                    if (exc != null) {
+                        throw exc;
+                    } else {
+                        Files.delete(dir);
+                        return FileVisitResult.CONTINUE;
+                    }
+                }
+            });
+        }
     }
 
     @Test
-    void testHook(Driver driver) throws Exception {
-        String firstCommitId = payload.get("after").textValue();
-        handler.checkoutAndParse(payload);
+    void testHook(Config config, Driver driver) throws Exception {
+        int repoCounter = 0;
+        Git remoteRepo = createRemoteRepo(config, driver, repoCounter);
+        JsonNode payloadInitialCommit = commitToRemote("Initial commit", remoteRepo, repoCounter);
+        String firstCommitId = payloadInitialCommit.get("head_commit").get("id").textValue();
+        handler.checkoutAndParse(payloadInitialCommit);
         NotebookStore notebookStore = new NotebookStore(driver);
         List<Notebook> notebooks = notebookStore.getNotebooks();
         assertThat(notebooks.size()).isEqualTo(2);
 
         // Test new commit
-        copyFiles("/notebooks/graph/commit1");
-        JsonNode secondPayload = commitToRemote("Second commit from remote repository");
+        createNewFileInRepo(resolveRepoDir(remoteRepo.getRepository().getDirectory().getPath(), repoCounter), repoCounter);
+        JsonNode secondPayload = commitToRemote("Second commit from remote repository", remoteRepo, repoCounter);
         handler.checkoutAndParse(secondPayload);
-        String secondCommitId = secondPayload.get("after").textValue();
+        String secondCommitId = secondPayload.get("head_commit").get("id").textValue();
         assertThat(secondCommitId).isNotEqualTo(firstCommitId);
         notebooks = notebookStore.getNotebooks();
 
-        // TODO is 7 correct here? We have added three new notebooks, but the two original ones are
-        // added to Neo4J on both runs
-        assertThat(notebooks.size()).isEqualTo(7);
+        // Two from first commit and three from second
+        assertThat(notebooks.size()).isEqualTo(5);
 
         // Delete file and commit
-        JsonNode deletePayload = deleteFileFromRemote("Delete file", "Freg.ipynb");
+        JsonNode deletePayload = deleteFileFromRemote("Delete file", NOTEBOOK_NAME + NOTEBOOK_FILE_EXTENSION, remoteRepo, repoCounter);
         handler.checkoutAndParse(deletePayload);
-        assertThat(deletePayload.get("after").textValue()).isNotEqualTo(secondCommitId);
+        assertThat(deletePayload.get("head_commit").get("id").textValue()).isNotEqualTo(secondCommitId);
         notebooks = notebookStore.getNotebooks();
-        assertThat(notebooks.size()).isEqualTo(11);
+
+        // Two from first commit, three from second and two from third
+        assertThat(notebooks.size()).isEqualTo(7);
     }
 
-    private void copyFiles(String s) throws IOException {
-        Path testNotebooks = Paths.get(GitHookServiceTest.class.getResource(s).getPath());
-        Path destination = Paths.get(remoteRepoDir);
+    @Test
+    void testNotLatestCommit(Config config, Driver driver) throws Exception {
+        int repoNumber = 0;
+        Git remoteRepo = createRemoteRepo(config, driver, repoNumber);
+        JsonNode payloadInitialCommit = commitToRemote("Initial commit", remoteRepo, repoNumber);
+        String firstCommitId = payloadInitialCommit.get("head_commit").get("id").textValue();
+
+        // Do a second commit, not included in payload
+        createNewFileInRepo(resolveRepoDir(remoteRepo.getRepository().getDirectory().getPath(), repoNumber), repoNumber);
+        JsonNode secondPayload = commitToRemote("Second commit from remote repository", remoteRepo, repoNumber);
+        assertThat(firstCommitId).isNotEqualTo(secondPayload.get("after").textValue());
+
+        handler.checkoutAndParse(payloadInitialCommit);
+        NotebookStore notebookStore = new NotebookStore(driver);
+        List<Notebook> notebooks = notebookStore.getNotebooks();
+        assertThat(notebooks.size()).isEqualTo(2);
+    }
+
+    @Test
+    void testAsyncSameRepo(Config config, Driver driver) throws Exception {
+        int repoCounter = 0;
+        Git remoteRepo = createRemoteRepo(config, driver, repoCounter);
+
+        // Do initial commit of files
+        commitToRemote("Initial commit", remoteRepo, repoCounter);
+
+        int numberOfThreads = 5;
+        CountDownLatch readyThreadCounter = new CountDownLatch(numberOfThreads);
+        CountDownLatch callingThreadBlocker = new CountDownLatch(1);
+        CountDownLatch completedThreadCounter = new CountDownLatch(numberOfThreads);
+
+        // Create commits and payloads
+        var payloads = new ArrayList<JsonNode>();
+        for (int i = 0; i < numberOfThreads; i++) {
+            createNewFileInRepo(resolveRepoDir(remoteRepo.getRepository().getDirectory().getPath(), repoCounter), i);
+            payloads.add(commitToRemote("Commit number " + i, remoteRepo, repoCounter));
+        }
+
+        List<Thread> workers = new ArrayList<>();
+        int expectedNumberOfNotebooks = 0;
+        int initialNumberOfNotebooks = 3;// First commit contains three notebooks
+        for (int i = 0; i < numberOfThreads; i++) {
+            workers.add(new Thread(new GitHookWorker(
+                    readyThreadCounter, callingThreadBlocker, completedThreadCounter, payloads.get(i))));
+            expectedNumberOfNotebooks += initialNumberOfNotebooks++;
+        }
+
+        workers.forEach(Thread::start);
+        readyThreadCounter.await();
+
+        callingThreadBlocker.countDown();
+        completedThreadCounter.await();
+        NotebookStore notebookStore = new NotebookStore(driver);
+        List<Notebook> notebooks = notebookStore.getNotebooks();
+
+        assertThat(notebooks.size()).isEqualTo(expectedNumberOfNotebooks);
+    }
+
+    @Test
+    void testAsyncMultipleRepos(Config config, Driver driver) throws Exception {
+        int numberOfThreads = 5;
+        CountDownLatch readyThreadCounter = new CountDownLatch(numberOfThreads);
+        CountDownLatch callingThreadBlocker = new CountDownLatch(1);
+        CountDownLatch completedThreadCounter = new CountDownLatch(numberOfThreads);
+
+        // Create repos, commits and payloads
+        var payloads = new ArrayList<JsonNode>();
+        for (int i = 0; i < numberOfThreads; i++) {
+            Git remoteRepo = createRemoteRepo(config, driver, i);
+            createNewFileInRepo(resolveRepoDir(remoteRepo.getRepository().getDirectory().getPath(), i), i);
+            payloads.add(commitToRemote("Commit number " + 0, remoteRepo, i));
+        }
+
+        List<Thread> workers = new ArrayList<>();
+        int expectedNumberOfNotebooks = numberOfThreads * 3; // Three files in each repo
+        for (int i = 0; i < numberOfThreads; i++) {
+            workers.add(new Thread(new GitHookWorker(
+                    readyThreadCounter, callingThreadBlocker, completedThreadCounter, payloads.get(i))));
+        }
+
+        workers.forEach(Thread::start);
+        readyThreadCounter.await();
+
+        callingThreadBlocker.countDown();
+        completedThreadCounter.await();
+        NotebookStore notebookStore = new NotebookStore(driver);
+        List<Notebook> notebooks = notebookStore.getNotebooks();
+
+        assertThat(notebooks.size()).isEqualTo(expectedNumberOfNotebooks);
+    }
+
+    private void createNewFileInRepo(String repoDir, int counter) throws IOException {
+        Path destinationPath = Paths.get(repoDir);
+        Path sourceFile = Paths.get(String.join(File.separator, destinationPath.toString(), NOTEBOOK_NAME + NOTEBOOK_FILE_EXTENSION));
+        Path destinationFileName = Paths.get(sourceFile.toString() + "_" + counter + NOTEBOOK_FILE_EXTENSION);
+        Files.copy(sourceFile, destinationFileName, StandardCopyOption.REPLACE_EXISTING);
+    }
+
+    private void copyFiles(String source, String destination) throws IOException {
+        Path testNotebooks = Paths.get(GitHookServiceTest.class.getResource(source).getPath());
+        Path destinationPath = Paths.get(destination);
         Stream<Path> jupyterNotebooks = Files.walk(testNotebooks, 1);
         jupyterNotebooks.forEach(notebook -> {
             if (notebook.toString().endsWith(".ipynb")) {
                 try {
-                    Files.copy(notebook, destination.resolve(testNotebooks.relativize(notebook)),
+                    Files.copy(notebook, destinationPath.resolve(testNotebooks.relativize(notebook)),
                             StandardCopyOption.REPLACE_EXISTING);
                 } catch (IOException e) {
                     e.printStackTrace();
@@ -126,31 +229,80 @@ class GitHookServiceTest {
         jupyterNotebooks.close();
     }
 
-    private JsonNode commitToRemote(String commitMessage) throws GitAPIException {
-        remoteGit.add().addFilepattern(".").call();
-        RevCommit commitRevision = remoteGit.commit().setMessage(commitMessage).call();
-
+    private JsonNode commitToRemote(String commitMessage, Git remoteRepo, int repoCounter) {
         ObjectNode newPayload = new ObjectMapper().createObjectNode();
-        newPayload.put("after", commitRevision.getId().toString());
-        ObjectNode repoNode = newPayload.putObject("repository");
-        repoNode
-                .put("clone_url", remoteRepoDir + ".git")
-                .put("name", "remoteRepo");
+        try {
+            remoteRepo.add().addFilepattern(".").call();
+            RevCommit commitRevision = remoteRepo.commit().setMessage(commitMessage).call();
 
+            newPayload.put("after", commitRevision.getName());
+            ObjectNode commitNode = newPayload.putObject("head_commit");
+            commitNode.put("id", commitRevision.getName());
+            ObjectNode repoNode = newPayload.putObject("repository");
+            repoNode
+                    .put("clone_url", resolveRepoDir(remoteRepo.getRepository().getDirectory().getPath(), repoCounter)
+                            + File.separator + ".git")
+                    .put("name", REMOTE_REPO_BASE_NAME + repoCounter);
+        } catch (GitAPIException e) {
+            e.printStackTrace();
+        }
         return newPayload;
     }
 
-    private JsonNode deleteFileFromRemote(String commitMessage, String filename) throws GitAPIException, IOException {
+    private JsonNode deleteFileFromRemote(
+            String commitMessage,
+            String filename,
+            Git remoteRepo,
+            int repoCounter) throws GitAPIException, IOException {
+
+        String remoteRepoDir = resolveRepoDir(remoteRepo.getRepository().getDirectory().getPath(), repoCounter);
         Files.delete(Paths.get(remoteRepoDir + File.separator + filename));
-        remoteGit.rm().addFilepattern(filename).call();
-        RevCommit commitRevision = remoteGit.commit().setMessage(commitMessage).call();
+        remoteRepo.rm().addFilepattern(filename).call();
+        RevCommit commitRevision = remoteRepo.commit().setMessage(commitMessage).call();
         ObjectNode newPayload = new ObjectMapper().createObjectNode();
-        newPayload.put("after", commitRevision.getId().toString());
+        newPayload.put("after", commitRevision.getName());
+        ObjectNode commitNode = newPayload.putObject("head_commit");
+        commitNode.put("id", commitRevision.getName());
         ObjectNode repoNode = newPayload.putObject("repository");
         repoNode
-                .put("clone_url", remoteRepoDir + ".git")
-                .put("name", "remoteRepo");
+                .put("clone_url", remoteRepoDir + File.separator + ".git")
+                .put("name", REMOTE_REPO_BASE_NAME + repoCounter);
 
         return newPayload;
     }
+
+    private String resolveRepoDir(String fullGitPath, int repoCounter) {
+        String[] dirs = fullGitPath.split("/");
+        return String.join(File.separator, tmpDirList.get(repoCounter).toString(), dirs[dirs.length - 2]); // Get the second to last element
+    }
+
+    class GitHookWorker implements Runnable {
+        private final CountDownLatch readyThreadCounter;
+        private final CountDownLatch callingThreadBlocker;
+        private final CountDownLatch completedThreadCounter;
+        private final JsonNode payload;
+
+        public GitHookWorker(CountDownLatch readyThreadCounter, CountDownLatch callingThreadBlocker,
+                             CountDownLatch completedThreadCounter, JsonNode payload) {
+            this.readyThreadCounter = readyThreadCounter;
+            this.callingThreadBlocker = callingThreadBlocker;
+            this.completedThreadCounter = completedThreadCounter;
+            this.payload = payload;
+        }
+
+        @Override
+        public void run() {
+            readyThreadCounter.countDown();
+            try {
+                callingThreadBlocker.await();
+                handler.checkoutAndParse(payload);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            } finally {
+                completedThreadCounter.countDown();
+            }
+
+        }
+    }
+
 }
