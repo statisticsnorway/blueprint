@@ -22,6 +22,7 @@ module no.ssb.blueprint {
     requires org.eclipse.jgit;
 
     requires info.picocli;
+    requires freemarker;
     opens no.ssb.dapla.blueprint.parser to info.picocli;
 
     exports no.ssb.dapla.blueprint;
