@@ -36,7 +36,12 @@ dag = DAG(
 
 <#list notebooks as notebook>
 # Job definition for ${notebook.path}
-task_${notebook.id}
+
+task_${notebook.id} = BashOperator(
+    task_id='run_after_loop',
+    bash_command='echo "executing notebook: ${notebook.fileName}" && sleep 10',
+    dag=dag,
+)
 </#list>
 
 # Dependencies
