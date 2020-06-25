@@ -38,7 +38,7 @@ dag = DAG(
 # Job definition for ${notebook.path}
 
 task_${notebook.id} = BashOperator(
-    task_id='run_after_loop',
+    task_id='${notebook.id}',
     bash_command='echo "executing notebook: ${notebook.fileName}" && sleep 10',
     dag=dag,
 )
