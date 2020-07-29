@@ -13,7 +13,7 @@ Both `BlueprintApplication` and `Parser` try to connect to a neo4j database. You
 like this (note that you need set the correct credentials `neo4j/secret` in `application.yml`): 
 
 ```
-docker run --rm -e NEO4J_AUTH=neo4j/secret -p 7474:7474 -p 7687:7687  neo4j:4.0
+docker run --rm -e NEO4J_AUTH=neo4j/secret -p 27474:7474 -p 27687:7687  neo4j:4.0
 ```
 
 Start the service:
