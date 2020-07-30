@@ -42,4 +42,4 @@ COPY --from=build /helidon/target/libs ./libs
 
 CMD ["java", "--enable-preview", "-jar", "blueprint.jar"]
 
-EXPOSE 8080
+EXPOSE 20170
