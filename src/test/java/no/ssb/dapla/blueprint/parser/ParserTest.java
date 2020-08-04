@@ -1,5 +1,6 @@
 package no.ssb.dapla.blueprint.parser;
 
+import freemarker.template.TemplateException;
 import no.ssb.dapla.blueprint.EmbeddedNeo4jExtension;
 import no.ssb.dapla.blueprint.NotebookStore;
 import no.ssb.dapla.blueprint.notebook.Notebook;
@@ -37,6 +38,21 @@ class ParserTest {
         store = new NotebookStore(driver);
         parser = new Parser(new NotebookFileVisitor(Set.of()), new Neo4jOutput(store));
         driver.session().writeTransaction(tx -> tx.run("MATCH (n) DETACH DELETE n"));
+    }
+
+    @Test
+    void testAirflowOutput() throws IOException, TemplateException {
+        var airflowOutput = new AirflowOutput();
+        var airflowParser = new Parser(new NotebookFileVisitor(Set.of()), airflowOutput);
+
+        airflowParser.parse(
+                Path.of("src/test/resources/notebooks/graph/commit2"),
+                "commit2",
+                "http://github.com/test/test"
+        );
+
+        airflowOutput.close();
+
     }
 
     @Test

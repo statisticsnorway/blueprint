@@ -61,6 +61,12 @@
             <version>5.7.0.202003110725-r</version>
         </dependency>
 
+        <dependency>
+            <groupId>org.freemarker</groupId>
+            <artifactId>freemarker</artifactId>
+            <version>2.3.30</version>
+        </dependency>
+
         <!-- Helidon uses jul -->
         <dependency>
             <groupId>org.slf4j</groupId>
