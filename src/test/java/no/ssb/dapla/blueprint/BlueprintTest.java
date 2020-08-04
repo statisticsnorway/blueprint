@@ -7,12 +7,11 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
 import io.helidon.config.Config;
 import io.helidon.media.common.DefaultMediaSupport;
-import io.helidon.media.jackson.common.JacksonSupport;
+import io.helidon.media.jackson.JacksonSupport;
 import io.helidon.webclient.WebClient;
 import io.helidon.webserver.WebServer;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.extension.RegisterExtension;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,7 +63,7 @@ public class BlueprintTest {
     public void testHelloWorld() {
         WebClient webClient = WebClient.builder()
                 .baseUri("http://localhost:" + webServer.port())
-                .addMediaSupport(DefaultMediaSupport.create(false))
+                .addMediaSupport(DefaultMediaSupport.create())
                 .addMediaSupport(JacksonSupport.create(mapper))
                 .build();
 

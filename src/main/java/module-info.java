@@ -8,8 +8,7 @@ module no.ssb.blueprint {
     requires jul.to.slf4j;
     requires logback.classic;
     requires jdk.unsupported;
-    requires io.helidon.media.jackson.common;
-    requires io.helidon.media.jackson.server;
+    requires io.helidon.media.jackson;
     requires com.fasterxml.jackson.databind;
     requires com.fasterxml.jackson.module.paramnames;
     requires com.fasterxml.jackson.datatype.jdk8;
@@ -18,7 +17,6 @@ module no.ssb.blueprint {
     requires io.helidon.webserver.accesslog;
     requires org.neo4j.driver;
     requires java.annotation;
-    requires io.helidon.media.jsonp.common;
     requires org.eclipse.jgit;
 
     requires info.picocli;

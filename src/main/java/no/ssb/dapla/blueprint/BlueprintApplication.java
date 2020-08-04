@@ -5,6 +5,7 @@ import ch.qos.logback.classic.util.ContextInitializer;
 import io.helidon.config.Config;
 import io.helidon.health.HealthSupport;
 import io.helidon.health.checks.HealthChecks;
+import io.helidon.media.jackson.JacksonSupport;
 import io.helidon.metrics.MetricsSupport;
 import io.helidon.openapi.OpenAPISupport;
 import io.helidon.webserver.Routing;
@@ -83,7 +84,7 @@ public class BlueprintApplication {
                         .register("/api/v1", blueprintService)
                         .register("/api/v1", githubHookService)
                         .build()
-        ).config(serverConfig).addMediaSupport(io.helidon.media.jackson.common.JacksonSupport.create()).build();
+        ).config(serverConfig).addMediaSupport(JacksonSupport.create()).build();
         put(WebServer.class, server);
     }
 
