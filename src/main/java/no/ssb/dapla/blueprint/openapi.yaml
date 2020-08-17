@@ -1,0 +1,175 @@
+openapi: 3.0.0
+info:
+  title: Blueprint API
+  description: >
+    The Blueprint service analyses ipybn notebooks in order to facilitate
+    headless execution.
+  version: 0.0.1
+servers:
+  - url: 'http://api.example.com/v1'
+    description: Production server
+  - url: 'http://staging-api.example.com/v1'
+    description: Staging server for testing
+paths:
+  /repository:
+    get:
+      summary: Return a list of repository
+      responses:
+        '200':
+          description: A JSON array of repository
+  /repository/{repoID}/revisions:
+    summary: List the revisions for a repository
+    get:
+      parameters:
+        - $ref: '#/components/parameters/repositoryID'
+        - name: diff
+          in: query
+          required: false
+          schema:
+            type: boolean
+
+      responses:
+        '200':
+          description: A JSON array of repository
+          content:
+            application/vnd.ssb.blueprint.revison+json:
+              schema:
+                $ref: '#/components/schemas/Revisions'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Revisions'
+
+  /revisions/{revID}/notebooks:
+    summary: List the notebooks for a revision.
+    get:
+      parameters:
+        - $ref: '#/components/parameters/revisionID'
+        - name: diff
+          in: query
+          required: false
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: List of notebooks
+          content:
+            application/vnd.ssb.blueprint.dag+json:
+              schema:
+                $ref: '#/components/schemas/Graph'
+            application/vnd.ssb.blueprint.notebook+json:
+              schema:
+                $ref: '#/components/schemas/Notebooks'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Notebooks'
+
+  /revisions/{revID}/notebooks/{notebookID}:
+    summary: Get a notebook.
+    get:
+      parameters:
+        - $ref: '#/components/parameters/notebookID'
+        - $ref: '#/components/parameters/revisionID'
+      responses:
+        '200':
+          description: A JSON array of repository
+
+  /revisions/{revID}/notebooks/{notebookID}/inputs:
+    summary: Get a notebook.
+    get:
+      parameters:
+        - $ref: '#/components/parameters/notebookID'
+        - $ref: '#/components/parameters/revisionID'
+      responses:
+        '200':
+          description: The input datasets
+
+  /revisions/{revID}/notebooks/{notebookID}/outputs:
+    summary: Get a notebook.
+    get:
+      parameters:
+        - $ref: '#/components/parameters/notebookID'
+        - $ref: '#/components/parameters/revisionID'
+      responses:
+        '200':
+          description: The output datasets
+
+  /revisions/{revID}/notebooks/{notebookID}/previous:
+    summary: List the notebooks this notebook depends on.
+    get:
+      parameters:
+        - $ref: '#/components/parameters/notebookID'
+        - $ref: '#/components/parameters/revisionID'
+      responses:
+        '200':
+          description: The output datasets
+
+  /revisions/{revID}/notebooks/{notebookID}/next:
+    summary: List the notebooks that depend on this notebook.
+    get:
+      parameters:
+        - $ref: '#/components/parameters/notebookID'
+        - $ref: '#/components/parameters/revisionID'
+      responses:
+        '200':
+          description: The output datasets
+
+components:
+  parameters:
+    repositoryID:
+      name: repoID
+      in: path
+      description: User ID
+      required: true
+      schema:
+        type: string
+    notebookID:
+      name: notebookID
+      in: path
+      description: Notebook identifier
+      required: true
+      schema:
+        type: string
+    revisionID:
+      name: revID
+      in: path
+      description: Revision identifier
+      required: true
+      schema:
+        type: string
+  schemas:
+    Graph:
+      properties:
+        edges:
+          type: array
+          items:
+            $ref: '#/components/schemas/Edge'
+    Edge:
+      type: object
+      properties:
+        from:
+          $ref: '#/components/schemas/Notebook'
+        to:
+          $ref: '#/components/schemas/Notebook'
+    Revisions:
+      type: array
+      items:
+        $ref: '#/components/schemas/Revision'
+    Revision:
+      type: object
+      properties:
+        id:
+          type: string
+    Notebooks:
+      type: array
+      items:
+        $ref: '#/components/schemas/Notebook'
+    Notebook:
+      type: object
+      properties:
+        id:
+          type: string
+    Dataset:
+      type: object
+      properties:
+        id:
+          type: string
