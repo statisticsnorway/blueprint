@@ -5,7 +5,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.helidon.common.http.Http;
 import io.helidon.common.http.MediaType;
 import io.helidon.config.Config;
-import io.helidon.webserver.*;
+import io.helidon.webserver.Routing;
+import io.helidon.webserver.ServerRequest;
+import io.helidon.webserver.ServerResponse;
+import io.helidon.webserver.Service;
 import no.ssb.dapla.blueprint.notebook.Dependency;
 import no.ssb.dapla.blueprint.notebook.Notebook;
 import no.ssb.dapla.blueprint.notebook.Repository;
@@ -47,39 +50,25 @@ public class BlueprintService implements Service {
         this.driver = driver;
     }
 
-    private static RequestPredicate.ConditionalHandler withAccept(Handler handler, MediaType... mediaTypes) {
-        return RequestPredicate.create()
-                .accepts(mediaTypes)
-                .thenApply(handler);
-    }
-
-    private static Handler withAcceptAndJson(Handler handler, MediaType mediaType) {
-        return withAccept(handler, APPLICATION_JSON, mediaType)
-                .otherwise((req, res) -> {
-                    throw new HttpException("invalid content-type", Http.Status.NOT_ACCEPTABLE_406);
-                });
-    }
-
     @Override
     public void update(Routing.Rules rules) {
         rules
-                .get("/repository",
-                        withAcceptAndJson(this::getRepositoriesHandler, APPLICATION_REPOSITORY_JSON))
-                .get("/repository/{repoID}/revisions", withAcceptAndJson(this::getRevisionsHandler, APPLICATION_REVISION_JSON))
-
-                .get("/revisions/{revID}/notebooks", RequestPredicate.create()
-                        .accepts(APPLICATION_NOTEBOOK_JSON, APPLICATION_JSON).thenApply(this::getNotebooksHandler))
-                .get("/revisions/{revID}/notebooks", RequestPredicate.create()
-                        .accepts(APPLICATION_DAG_JSON).thenApply(this::getNotebooksHandler).otherwise((req, res) -> {
-                            throw new HttpException("invalid content-type", Http.Status.NOT_ACCEPTABLE_406);
-                        }))
-
-                .get("/revisions/{revID}/notebooks/{notebookID}", RequestPredicate.create()
-                        .accepts(APPLICATION_NOTEBOOK_JSON, APPLICATION_JSON)
-                        .thenApply(this::getNotebookHandler)
-                        .otherwise((req, res) -> {
-                            throw new HttpException("invalid content-type", Http.Status.NOT_ACCEPTABLE_406);
-                        })
+                .get("/repository", MediaTypeHandler.create()
+                        .accept(this::getRepositoriesHandler, APPLICATION_REPOSITORY_JSON, APPLICATION_JSON)
+                        .orFail()
+                )
+                .get("/repository/{repoID}/revisions", MediaTypeHandler.create()
+                        .accept(this::getRevisionsHandler, APPLICATION_REVISION_JSON, APPLICATION_JSON)
+                        .orFail()
+                )
+                .get("/revisions/{revID}/notebooks", MediaTypeHandler.create()
+                        .accept(this::getNotebooksHandler, APPLICATION_NOTEBOOK_JSON, APPLICATION_JSON)
+                        .accept(this::getNotebooksHandler, APPLICATION_DAG_JSON)
+                        .orFail()
+                )
+                .get("/revisions/{revID}/notebooks/{notebookID}", MediaTypeHandler.create()
+                        .accept(this::getNotebookHandler, APPLICATION_NOTEBOOK_JSON, APPLICATION_JSON)
+                        .orFail()
                 )
 
                 .get("/revisions/{revID}/notebooks/{notebookID}/inputs", this::getNotebookInputsHandler)
