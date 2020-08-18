@@ -13,26 +13,27 @@ servers:
 paths:
   /repository:
     get:
-      summary: Return a list of repository
+      summary: Return a list of repositories
       responses:
         '200':
           description: A JSON array of repository
+          content:
+            application/vnd.ssb.blueprint.repository+json:
+              schema:
+                $ref: '#/components/schemas/Repositories'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Repositories'
   /repository/{repoID}/revisions:
     summary: List the revisions for a repository
     get:
       parameters:
         - $ref: '#/components/parameters/repositoryID'
-        - name: diff
-          in: query
-          required: false
-          schema:
-            type: boolean
-
       responses:
         '200':
           description: A JSON array of repository
           content:
-            application/vnd.ssb.blueprint.revison+json:
+            application/vnd.ssb.blueprint.revision+json:
               schema:
                 $ref: '#/components/schemas/Revisions'
             application/json:
@@ -72,6 +73,13 @@ paths:
       responses:
         '200':
           description: A JSON array of repository
+          content:
+            application/vnd.ssb.blueprint.notebook+json:
+              schema:
+                $ref: '#/components/schemas/Notebook'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Notebook'
 
   /revisions/{revID}/notebooks/{notebookID}/inputs:
     summary: Get a notebook.
@@ -137,18 +145,27 @@ components:
       schema:
         type: string
   schemas:
+    Repository:
+      type: object
+      properties:
+        id:
+          type: string
+    Repositories:
+      type: array
+      items:
+        $ref: '#/components/schemas/Repository'
     Graph:
       properties:
         edges:
           type: array
           items:
-            $ref: '#/components/schemas/Edge'
-    Edge:
+            $ref: '#/components/schemas/Dependency'
+    Dependency:
       type: object
       properties:
-        from:
+        producer:
           $ref: '#/components/schemas/Notebook'
-        to:
+        consumer:
           $ref: '#/components/schemas/Notebook'
     Revisions:
       type: array
