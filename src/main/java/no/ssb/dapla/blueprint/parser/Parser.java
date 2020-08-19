@@ -16,19 +16,23 @@ import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 
 import static picocli.CommandLine.Parameters;
 
 public final class Parser {
 
-    private NotebookFileVisitor visitor;
-    private final NotebookProcessor processor = new NotebookProcessor(new ObjectMapper());
+    private final NotebookFileVisitor visitor;
+    private final NotebookProcessor processor;
     private final Output output;
 
     public Parser(NotebookFileVisitor visitor, Output output) {
+        this(visitor, output, new NotebookProcessor(new ObjectMapper()));
+    }
+
+    public Parser(NotebookFileVisitor visitor, Output output, NotebookProcessor processor) {
         this.visitor = Objects.requireNonNull(visitor);
         this.output = Objects.requireNonNull(output);
+        this.processor = Objects.requireNonNull(processor);
     }
 
     public static void main(String... args) throws IOException {

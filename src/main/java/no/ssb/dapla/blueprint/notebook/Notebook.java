@@ -17,6 +17,11 @@ public class Notebook {
     public String path;
     public Set<String> inputs = new HashSet<>();
     public Set<String> outputs = new HashSet<>();
+    public Boolean changed = true;
+
+    public Boolean getChanged() {
+        return changed;
+    }
 
     public String getRepositoryURL() {
         return repositoryURL;
