@@ -15,8 +15,8 @@ resources:
     - repository: templates
       type: github
       name: statisticsnorway/azure-pipelines-templates
-      ref: refs/tags/0.0.4
-      endpoint: statisticsnorway
+      ref: refs/tags/0.0.6
+      endpoint: statisticsnorway (6)
 
 # Pipeline will be run on this base image
 pool:
@@ -39,6 +39,7 @@ jobs:
     parameters:
       project: dapla
       imageName: dataset-access
+      mavenContainer: maven:3-jdk-14
 
   # Job which pulls the Docker image with the correct tag (image-scan-tag) from GCR, tags this
   # with the git tag, and pushes that back to GCR.
