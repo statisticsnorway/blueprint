@@ -1,5 +1,6 @@
 package no.ssb.dapla.blueprint;
 
+import no.ssb.dapla.blueprint.notebook.Dependency;
 import no.ssb.dapla.blueprint.notebook.Notebook;
 import org.neo4j.driver.Record;
 import org.neo4j.driver.*;
@@ -8,6 +9,9 @@ import org.neo4j.driver.types.Node;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * TODO: Evaluate https://neo4j-contrib.github.io/cypher-dsl
+ */
 public class NotebookStore {
 
     private static final Query INSERT_NOTEBOOK = new Query("""
@@ -107,12 +111,20 @@ public class NotebookStore {
     }
 
     public List<Notebook> getNotebooks() {
+        return getNotebooks(null);
+    }
+
+    public List<Notebook> getNotebooks(String revisionId) {
         try (Session session = driver.session()) {
             return session.readTransaction(tx -> {
+                var parameters = Values.parameters(
+                        "commitId", revisionId
+                );
                 Result result = tx.run("""
                         MATCH (rev:GitRevision)-[:MODIFIES]->(nb:Notebook)-[t:CONSUMES|PRODUCES]->(ds:Dataset)
+                        WHERE $commitId is null or rev.commitId = $commitId
                         RETURN rev, nb, ds, t
-                        """);
+                        """, parameters);
                 Map<Node, List<Record>> map = result.stream().collect(
                         Collectors.groupingBy(record -> record.get("nb").asNode()));
 
@@ -149,5 +161,9 @@ public class NotebookStore {
                 return nbResult;
             });
         }
+    }
+
+    public List<Dependency> getDependencies(String revisionId) {
+        return List.of();
     }
 }

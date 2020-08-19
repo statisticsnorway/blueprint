@@ -58,9 +58,9 @@ public class BlueprintApplication {
                 .build();
         MetricsSupport metrics = MetricsSupport.create();
 
-        BlueprintService blueprintService = new BlueprintService(config, driver);
-
-        GitHookService githubHookService = new GitHookService(config, new NotebookStore(driver));
+        var notebookStore = new NotebookStore(driver);
+        BlueprintService blueprintService = new BlueprintService(config, notebookStore);
+        GitHookService githubHookService = new GitHookService(config, notebookStore);
 
         var server = WebServer.builder();
         server.routing(Routing.builder()
