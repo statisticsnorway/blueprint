@@ -24,9 +24,9 @@ pool:
 
 variables:
   - name: imageName
-    value: 'eu.gcr.io/prod-bip/ssb/dapla/dapla-blueprint'
+    value: 'eu.gcr.io/prod-bip/ssb/dapla/blueprint'
   - name: repoName
-    value: 'prod-bip/ssb/dapla/dapla-blueprint'
+    value: 'prod-bip/ssb/dapla/blueprint'
   - name:  MAVEN_CACHE_FOLDER
     value: $(Pipeline.Workspace)/.m2/repository
   - name: MAVEN_OPTS
