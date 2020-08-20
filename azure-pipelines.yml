@@ -38,7 +38,7 @@ jobs:
   - template: complete-builds/job-test-coverage-build-gcr.yml@templates
     parameters:
       project: dapla
-      imageName: dataset-access
+      imageName: ${{ variables.imageName }}
       mavenContainer: maven:3-jdk-14
 
   # Job which pulls the Docker image with the correct tag (image-scan-tag) from GCR, tags this
@@ -47,5 +47,5 @@ jobs:
   # the code repo are propagated to the corresponding (newly built) image in GCR.
   - template: docker/docker-tag-for-production.yml@templates
     parameters:
-      tagToTag: dataset-access
+      tagToTag: ${{ variables.imageName }}
       gcrImageName: ${{ variables.imageName }}
