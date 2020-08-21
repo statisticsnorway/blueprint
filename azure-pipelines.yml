@@ -38,6 +38,7 @@ jobs:
       project: dapla
       imageName: ${{ variables.imageName }}
       mavenContainer: maven:3-jdk-14
+      checkStyleRunAnalysis: false
 
   # Job which pulls the Docker image with the correct tag (image-scan-tag) from GCR, tags this
   # with the git tag, and pushes that back to GCR.
