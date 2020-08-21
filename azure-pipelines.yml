@@ -21,10 +21,8 @@ pool:
   vmImage: 'ubuntu-latest'
 
 variables:
-  - name: imageName
-    value: 'eu.gcr.io/prod-bip/ssb/dapla/blueprint'
-  - name: repoName
-    value: 'prod-bip/ssb/dapla/blueprint'
+  - name: gcrImageName
+    value: 'eu.gcr.io/prod-bip/ssb/dapla/dapla-blueprint'
   - name:  MAVEN_CACHE_FOLDER
     value: $(Pipeline.Workspace)/.m2/repository
   - name: MAVEN_OPTS
@@ -46,5 +44,5 @@ jobs:
   # the code repo are propagated to the corresponding (newly built) image in GCR.
   - template: docker/docker-tag-for-production.yml@templates
     parameters:
-      tagToTag: ${{ variables.imageName }}
-      gcrImageName: ${{ variables.imageName }}
+      tagToTag: ${{ variables.gcrImageName }}
+      gcrImageName: ${{ variables.gcrImageName }}
