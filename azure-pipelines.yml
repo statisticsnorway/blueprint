@@ -36,7 +36,7 @@ jobs:
   - template: complete-builds/job-test-coverage-build-gcr.yml@templates
     parameters:
       project: dapla
-      imageName: blueprint
+      imageName: dapla-blueprint
       mavenContainer: maven:3-jdk-14
       checkStyleRunAnalysis: false
 
