@@ -21,6 +21,10 @@ pool:
   vmImage: 'ubuntu-latest'
 
 variables:
+  # Variables defined in Pipelines->Library->Variable Groups in your project in
+  # Azure Pipelines
+  - group: Hemmeligheter
+  # Variables defined here
   - name: fullSha
     value: '$(Build.SourceVersion)'
   - name: imageName
