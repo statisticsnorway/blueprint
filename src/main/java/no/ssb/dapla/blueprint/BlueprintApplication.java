@@ -9,6 +9,7 @@ import io.helidon.media.jackson.JacksonSupport;
 import io.helidon.metrics.MetricsSupport;
 import io.helidon.openapi.OpenAPISupport;
 import io.helidon.webserver.Routing;
+import io.helidon.webserver.StaticContentSupport;
 import io.helidon.webserver.WebServer;
 import io.helidon.webserver.WebTracingConfig;
 import io.helidon.webserver.accesslog.AccessLogSupport;
@@ -62,13 +63,18 @@ public class BlueprintApplication {
         BlueprintService blueprintService = new BlueprintService(config, notebookStore);
         GitHookService githubHookService = new GitHookService(config, notebookStore);
 
+        var redoc = StaticContentSupport.builder("/redoc")
+                .welcomeFileName("index.html").build();
+
         var server = WebServer.builder();
+
         server.routing(Routing.builder()
                 .register(AccessLogSupport.create(config.get("server.access-log")))
                 .register(WebTracingConfig.create(config.get("tracing")))
                 .register(OpenAPISupport.create(config))
                 .register(health)
                 .register(metrics)
+                .register("/", redoc)
                 .register("/api/v1", blueprintService)
                 .register("/api/v1", githubHookService)
         );
