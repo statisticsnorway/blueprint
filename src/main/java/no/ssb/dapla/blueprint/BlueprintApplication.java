@@ -63,7 +63,11 @@ public class BlueprintApplication {
         BlueprintService blueprintService = new BlueprintService(config, notebookStore);
         GitHookService githubHookService = new GitHookService(config, notebookStore);
 
+        var rapidoc = StaticContentSupport.builder("/rapidoc")
+                .welcomeFileName("index.html").build();
         var redoc = StaticContentSupport.builder("/redoc")
+                .welcomeFileName("index.html").build();
+        var swagger = StaticContentSupport.builder("/swagger")
                 .welcomeFileName("index.html").build();
 
         var server = WebServer.builder();
@@ -74,7 +78,10 @@ public class BlueprintApplication {
                 .register(OpenAPISupport.create(config))
                 .register(health)
                 .register(metrics)
-                .register("/", redoc)
+                .register("/", rapidoc)
+                .register("/swagger", swagger)
+                .register("/rapidoc", rapidoc)
+                .register("/redoc", redoc)
                 .register("/api/v1", blueprintService)
                 .register("/api/v1", githubHookService)
         );
