@@ -22,7 +22,8 @@ public class NotebookStore {
                         
             MERGE (rev)-[:MODIFIES]->(nb:Notebook {
                 fileName: $fileName,
-                path: $path
+                path: $path,
+                changed: $changed
             })
                         
             WITH nb
@@ -35,58 +36,6 @@ public class NotebookStore {
               MERGE (ds:Dataset {path: output, commitId:$commitId})
               MERGE (nb)-[:PRODUCES]->(ds)
                                             
-            """);
-
-    // Does not work at the moment.
-    private static final Query INSERT_NOTEBOOK_NO_COMMIT = new Query("""
-            MERGE (rev:GitRevision {
-                commitId: $commitId,
-                repositoryURL: $repositoryURL
-            })
-                        
-            MERGE (rev)-[:MODIFIES]->(nb:Notebook {
-                fileName: $fileName,
-                path: $path
-            })
-                        
-            WITH rev, nb
-            UNWIND $inputs as input
-            	MATCH (rev)-[:MODIFIES]->(:Notebook)-[]-(eds:Dataset {path: input})
-                MERGE (nb)-[:CONSUMES]->(eds)
-                        
-            WITH nb
-            UNWIND $inputs as input
-                MERGE (ds:Dataset {path: input})
-                MERGE (nb)-[:CONSUMES]->(ds)
-                
-            WITH nb
-            UNWIND $outputs as output
-              MERGE (ds:Dataset {path: output})
-              MERGE (nb)-[:PRODUCES]->(ds)
-            """);
-
-    // Works but requires a cleaning pass at the end.
-    private static final Query INSERT_NOTEBOOK_FOREACH = new Query("""
-                                
-            MERGE (rev:GitRevision {
-                commitId: $commitId,
-                repositoryURL: $repositoryURL
-            })
-                        
-            MERGE (rev)-[:MODIFIES]->(nb:Notebook {
-                fileName: $fileName,
-                path: $path
-            })
-                    
-            FOREACH (input IN $inputs |
-              MERGE (r)<-[:TmpGitRev]-(ds:Dataset {path: input})
-              MERGE (nb)-[:CONSUMES]->(ds)
-            )
-            FOREACH (output IN $outputs |
-              MERGE (r)<-[:TmpGitRev]-(ds:Dataset {path: output})
-              MERGE (nb)-[:PRODUCES]->(ds)
-            )
-                           
             """);
 
     private final Driver driver;
@@ -102,6 +51,7 @@ public class NotebookStore {
                 parameters.put("fileName", notebook.fileName);
                 parameters.put("path", notebook.path);
                 parameters.put("commitId", notebook.commitId);
+                parameters.put("changed", notebook.changed);
                 parameters.put("repositoryURL", notebook.repositoryURL);
                 parameters.put("inputs", notebook.inputs);
                 parameters.put("outputs", notebook.outputs);
@@ -111,18 +61,23 @@ public class NotebookStore {
     }
 
     public List<Notebook> getNotebooks() {
-        return getNotebooks(null);
+        return getNotebooks(null, null);
     }
 
     public List<Notebook> getNotebooks(String revisionId) {
+        return getNotebooks(revisionId, null);
+    }
+
+    public List<Notebook> getNotebooks(String revisionId, Boolean diff) {
         try (Session session = driver.session()) {
             return session.readTransaction(tx -> {
                 var parameters = Values.parameters(
-                        "commitId", revisionId
+                        "commitId", revisionId,
+                        "diff", diff
                 );
                 Result result = tx.run("""
                         MATCH (rev:GitRevision)-[:MODIFIES]->(nb:Notebook)-[t:CONSUMES|PRODUCES]->(ds:Dataset)
-                        WHERE $commitId is null or rev.commitId = $commitId
+                        WHERE $commitId is null or rev.commitId = $commitId and $diff is null or nb.changed = $diff
                         RETURN rev, nb, ds, t
                         """, parameters);
                 Map<Node, List<Record>> map = result.stream().collect(
@@ -133,6 +88,7 @@ public class NotebookStore {
                     Notebook notebook = new Notebook();
                     notebook.fileName = node.get("fileName").asString();
                     notebook.path = node.get("path").asString();
+                    notebook.changed = node.get("changed").asBoolean();
 
                     notebook.repositoryURL = map.get(node).stream()
                             .map(record -> record.get("rev"))
@@ -165,5 +121,31 @@ public class NotebookStore {
 
     public List<Dependency> getDependencies(String revisionId) {
         return List.of();
+    }
+
+    public Notebook getNotebook(String revisionId, String notebookId) {
+        try (Session session = driver.session()) {
+            var parameters = Values.parameters(
+                    "commitId", revisionId,
+                    "notebookId", notebookId
+            );
+            var optionalRecord = session.readTransaction(tx -> {
+                Result result = tx.run("""
+                        MATCH (rev:GitRevision)-[:MODIFIES]->(nb:Notebook)
+                        WHERE rev.commitId = $commitId and nb.id = notebookId
+                        RETURN nb
+                        """, parameters);
+                return result.stream().findFirst();
+            });
+
+            return optionalRecord.map(record -> {
+                var node = record.get("").asNode();
+                Notebook notebook = new Notebook();
+                notebook.fileName = node.get("fileName").asString();
+                notebook.path = node.get("path").asString();
+                notebook.changed = node.get("changed").asBoolean();
+                return notebook;
+            }).orElse(null);
+        }
     }
 }

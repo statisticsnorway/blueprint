@@ -11,6 +11,7 @@ import java.util.Set;
 
 @ExtendWith(EmbeddedNeo4jExtension.class)
 class NotebookStoreTest {
+
     private static final Set<String> DS_ONE = Set.of(
             "/ds/one/one",
             "/ds/one/two",
@@ -98,6 +99,33 @@ class NotebookStoreTest {
         notebook.inputs = DS_TWO;
         notebook.outputs = DS_THREE;
         store.addNotebook(notebook);
+
+    }
+
+    @Test
+    void testQueryDiff() {
+
+        Notebook notebook = new Notebook();
+
+        notebook.repositoryURL = "repo";
+        notebook.commitId = "changedCommit";
+        notebook.path = "/some/path";
+        notebook.fileName = "/some/path";
+        notebook.changed = true;
+        notebook.inputs = DS_ONE;
+        notebook.outputs = DS_TWO;
+
+        store.addNotebook(notebook);
+
+        notebook.repositoryURL = "repo";
+        notebook.commitId = "changedCommit";
+        notebook.path = "/some/other/path";
+        notebook.fileName = "/some/other/path";
+        notebook.changed = true;
+        notebook.inputs = DS_TWO;
+        notebook.outputs = DS_THREE;
+        store.addNotebook(notebook);
+
 
     }
 }

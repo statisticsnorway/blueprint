@@ -8,7 +8,6 @@ import io.helidon.webserver.Routing;
 import io.helidon.webserver.ServerRequest;
 import io.helidon.webserver.ServerResponse;
 import io.helidon.webserver.Service;
-import no.ssb.dapla.blueprint.notebook.Dependency;
 import no.ssb.dapla.blueprint.notebook.Notebook;
 import no.ssb.dapla.blueprint.notebook.Repository;
 import no.ssb.dapla.blueprint.notebook.Revision;
@@ -46,8 +45,12 @@ public class BlueprintService implements Service {
         this.store = Objects.requireNonNull(store);
     }
 
-    private static String getRevision(ServerRequest request) {
+    private static String getRevisionId(ServerRequest request) {
         return Objects.requireNonNull(request.path().param("revID"));
+    }
+
+    private static String getNotebookId(ServerRequest request) {
+        return Objects.requireNonNull(request.path().param("notebookID"));
     }
 
     private void getRepositoriesHandler(ServerRequest request, ServerResponse response) {
@@ -71,6 +74,7 @@ public class BlueprintService implements Service {
                         .accept(this::getRepositoriesHandler, APPLICATION_REPOSITORY_JSON, APPLICATION_JSON)
                         .orFail()
                 )
+
                 .get("/repository/{repoID}/revisions", MediaTypeHandler.create()
                         .accept(this::getRevisionsHandler, APPLICATION_REVISION_JSON, APPLICATION_JSON)
                         .orFail()
@@ -85,6 +89,7 @@ public class BlueprintService implements Service {
                         .orFail()
                 )
 
+                // TODO: Those are maybe not that useful.
                 .get("/revisions/{revID}/notebooks/{notebookID}/inputs", this::getNotebookInputsHandler)
                 .get("/revisions/{revID}/notebooks/{notebookID}/outputs", this::getNotebookOutputsHandler)
                 .get("/revisions/{revID}/notebooks/{notebookID}/previous", this::getPreviousNotebooksHandler)
@@ -92,21 +97,22 @@ public class BlueprintService implements Service {
     }
 
     private void getNotebooksHandler(ServerRequest request, ServerResponse response) {
-        var revisionId = getRevision(request);
+        var revisionId = getRevisionId(request);
         var notebooks = store.getNotebooks(revisionId);
         response.status(Http.Status.OK_200).send(notebooks);
     }
 
     private void getNotebooksDAGHandler(ServerRequest request, ServerResponse response) {
-        var revisionId = getRevision(request);
+        var revisionId = getRevisionId(request);
         var dependencies = store.getDependencies(revisionId);
         response.status(Http.Status.OK_200).send(dependencies);
     }
 
     private void getNotebookHandler(ServerRequest request, ServerResponse response) {
-        var nb1 = new Notebook();
-        nb1.fileName = "/foo";
-        response.status(Http.Status.OK_200).send(nb1);
+        var revisionId = getRevisionId(request);
+        var notebookId = getNotebookId(request);
+        Notebook notebook = store.getNotebook(revisionId, notebookId);
+        response.status(Http.Status.OK_200).send(notebook);
     }
 
     private void getNotebookOutputsHandler(ServerRequest request, ServerResponse response) {
