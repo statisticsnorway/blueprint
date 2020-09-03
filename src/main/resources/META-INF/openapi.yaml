@@ -16,7 +16,7 @@ paths:
       summary: Return a list of repositories
       responses:
         '200':
-          description: A JSON array of repository
+          description: The list of repositories.
           content:
             application/vnd.ssb.blueprint.repository+json:
               schema:
@@ -31,7 +31,7 @@ paths:
         - $ref: '#/components/parameters/repositoryID'
       responses:
         '200':
-          description: A JSON array of repository
+          description: The list of revisions
           content:
             application/vnd.ssb.blueprint.revision+json:
               schema:
@@ -46,13 +46,16 @@ paths:
       parameters:
         - $ref: '#/components/parameters/revisionID'
         - name: diff
+          description: Use the diff to filter out the notebooks that did not change with the revision.
           in: query
           required: false
           schema:
             type: boolean
       responses:
         '200':
-          description: List of notebooks
+          description: |
+            The list of notebooks. Note that the content-type can be used to return a directed aclyclic graph of the
+            notebooks.
           content:
             application/vnd.ssb.blueprint.dag+json:
               schema:
@@ -72,8 +75,11 @@ paths:
         - $ref: '#/components/parameters/revisionID'
       responses:
         '200':
-          description: A JSON array of repository
+          description: The notebook. Note that one can ask for the actual content of the file with the content type.
           content:
+            application/vnd.jupyter:
+              schema:
+                type: object
             application/vnd.ssb.blueprint.notebook+json:
               schema:
                 $ref: '#/components/schemas/Notebook'
@@ -155,6 +161,7 @@ components:
       items:
         $ref: '#/components/schemas/Repository'
     Graph:
+      description: A directed acyclic graph (DAG) of the notebooks.
       properties:
         edges:
           type: array
