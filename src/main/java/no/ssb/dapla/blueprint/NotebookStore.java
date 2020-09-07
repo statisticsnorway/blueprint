@@ -23,7 +23,8 @@ public class NotebookStore {
             MERGE (rev)-[:MODIFIES]->(nb:Notebook {
                 fileName: $fileName,
                 path: $path,
-                changed: $changed
+                changed: $changed,
+                blobId: $blobId
             })
                         
             WITH nb
@@ -55,6 +56,7 @@ public class NotebookStore {
                 parameters.put("repositoryURL", notebook.repositoryURL);
                 parameters.put("inputs", notebook.inputs);
                 parameters.put("outputs", notebook.outputs);
+                parameters.put("blobId", notebook.blobId);
                 return tx.run(INSERT_NOTEBOOK.withParameters(parameters));
             });
         }
@@ -85,10 +87,8 @@ public class NotebookStore {
 
                 ArrayList<Notebook> nbResult = new ArrayList<>();
                 for (Node node : map.keySet()) {
-                    Notebook notebook = new Notebook();
-                    notebook.fileName = node.get("fileName").asString();
-                    notebook.path = node.get("path").asString();
-                    notebook.changed = node.get("changed").asBoolean();
+
+                    var notebook = nodeToNotebook(node);
 
                     notebook.repositoryURL = map.get(node).stream()
                             .map(record -> record.get("rev"))
@@ -123,29 +123,32 @@ public class NotebookStore {
         return List.of();
     }
 
-    public Notebook getNotebook(String revisionId, String notebookId) {
+    public Notebook getNotebook(String revisionId, String blobId) {
         try (Session session = driver.session()) {
             var parameters = Values.parameters(
                     "commitId", revisionId,
-                    "notebookId", notebookId
+                    "blobId", blobId
             );
             var optionalRecord = session.readTransaction(tx -> {
                 Result result = tx.run("""
                         MATCH (rev:GitRevision)-[:MODIFIES]->(nb:Notebook)
-                        WHERE rev.commitId = $commitId and nb.id = notebookId
+                        WHERE rev.commitId = $commitId and nb.blobId = $blobId
                         RETURN nb
                         """, parameters);
                 return result.stream().findFirst();
             });
 
-            return optionalRecord.map(record -> {
-                var node = record.get("").asNode();
-                Notebook notebook = new Notebook();
-                notebook.fileName = node.get("fileName").asString();
-                notebook.path = node.get("path").asString();
-                notebook.changed = node.get("changed").asBoolean();
-                return notebook;
-            }).orElse(null);
+            return optionalRecord.map(record -> record.get("nb").asNode())
+                    .map(this::nodeToNotebook).orElse(null);
         }
+    }
+
+    private Notebook nodeToNotebook(Node node) {
+        Notebook notebook = new Notebook();
+        notebook.fileName = node.get("fileName").asString();
+        notebook.path = node.get("path").asString();
+        notebook.changed = node.get("changed").asBoolean();
+        notebook.blobId = node.get("blobId").asString();
+        return notebook;
     }
 }

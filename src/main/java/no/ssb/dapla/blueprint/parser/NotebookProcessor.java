@@ -18,16 +18,18 @@ public class NotebookProcessor {
     }
 
     public Notebook process(File path) throws IOException {
-        return process(path.toPath());
+        var repositoryPath = path.toPath().getParent();
+        var relativePath = repositoryPath.relativize(path.toPath());
+        return process(repositoryPath, relativePath);
     }
 
-    public Notebook process(Path path) throws IOException {
+    public Notebook process(Path path, Path notebookPath) throws IOException {
 
-        JsonNode jsonNode = mapper.readTree(path.toFile());
+        JsonNode jsonNode = mapper.readTree(path.resolve(notebookPath).toFile());
 
         Notebook notebook = new Notebook();
-        notebook.fileName = path.getFileName().toString();
-        notebook.path = path.toString();
+        notebook.fileName = notebookPath.getFileName().toString();
+        notebook.path = notebookPath.toString();
 
         JsonNode cells = jsonNode.get("cells");
         processCells(notebook, cells);

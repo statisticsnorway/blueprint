@@ -58,8 +58,12 @@ public final class Parser {
 
     public void parse(Path path, String commitId, String repositoryURL) throws IOException {
         Files.walkFileTree(path, visitor);
-        for (Path notebook : visitor.getNotebooks()) {
-            Notebook nb = processor.process(notebook);
+        for (Path notebookPath : visitor.getNotebooks()) {
+
+            // (repo/foo/bar).relativize(repo/) -> foo/bar.
+            var relNotebookPath = path.relativize(notebookPath);
+
+            Notebook nb = processor.process(path, relNotebookPath);
             nb.commitId = commitId;
             nb.repositoryURL = repositoryURL;
             output.output(nb);

@@ -8,7 +8,9 @@ import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.ObjectReader;
+import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.treewalk.CanonicalTreeParser;
+import org.eclipse.jgit.treewalk.TreeWalk;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,14 +37,33 @@ public class GitNotebookProcessor extends NotebookProcessor {
     }
 
     @Override
-    public Notebook process(Path path) throws IOException {
+    public Notebook process(Path path, Path notebookPath) throws IOException {
         var diffEntries = getDiffMap();
-        var notebook = super.process(path);
+        var notebook = super.process(path, notebookPath);
 
-        // Since we are only looking at the files that exists a match
-        // here always means that the file was changed.
-        notebook.changed = diffEntries.containsKey(notebook.fileName);
+        notebook.blobId = getObjectId("HEAD", notebookPath);
+
+        // Since we are only looking at all the files that exists a match always means
+        // that the file was changed.
+        notebook.changed = diffEntries.containsKey(notebookPath.toString());
         return notebook;
+    }
+
+    private String getObjectId(String revSpec, Path filePath) throws IOException {
+
+        var repository = git.getRepository();
+        try (var reader = repository.newObjectReader()) {
+            var walk = new RevWalk(reader);
+            var commitId = repository.resolve(revSpec);
+            var commit = walk.parseCommit(commitId);
+            var tree = commit.getTree();
+            var treeWalk = TreeWalk.forPath(reader, filePath.toString(), tree);
+            if (treeWalk == null) {
+                throw new IOException(String.format("could not find file with path %s in commit %s", filePath, revSpec));
+            } else {
+                return treeWalk.getObjectId(0).getName();
+            }
+        }
     }
 
     private String getHead() throws IOException {
