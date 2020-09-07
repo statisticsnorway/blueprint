@@ -178,6 +178,7 @@
         <dependency>
             <groupId>io.helidon.webclient</groupId>
             <artifactId>helidon-webclient</artifactId>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.neo4j</groupId>
