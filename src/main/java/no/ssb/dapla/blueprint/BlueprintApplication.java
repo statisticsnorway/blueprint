@@ -78,10 +78,10 @@ public class BlueprintApplication {
                 .register(OpenAPISupport.create(config))
                 .register(health)
                 .register(metrics)
-                .register("/", rapidoc)
                 .register("/swagger", swagger)
                 .register("/rapidoc", rapidoc)
                 .register("/redoc", redoc)
+
                 .register("/api/v1", blueprintService)
                 .register("/api/v1", githubHookService)
         );
@@ -114,8 +114,7 @@ public class BlueprintApplication {
         // print a message at shutdown. If unsuccessful, print the exception.
         app.get(WebServer.class).start()
                 .thenAccept(ws -> {
-                    System.out.println(
-                            "WEB server is up! http://" + ws.configuration().bindAddress()+ ":" + ws.port() + "/api/v1/githubhook");
+                    LOG.info("Server up and running: http://{}:{}/api/v1", ws.configuration().bindAddress(), ws.port());
                     ws.whenShutdown().thenRun(()
                             -> System.out.println("WEB server is DOWN. Good bye!"));
                 })
