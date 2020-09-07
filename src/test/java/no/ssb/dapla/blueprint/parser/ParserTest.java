@@ -56,7 +56,7 @@ class ParserTest {
     }
 
     @Test
-    void testCommit1(Driver driver) throws IOException {
+    void testCommit1() throws IOException {
 
         parser.parse(
                 Path.of("src/test/resources/notebooks/graph/commit1"),
@@ -67,7 +67,7 @@ class ParserTest {
         Notebook familyNotebook = createNotebook(
                 "commit1",
                 "http://github.com/test/test",
-                "src/test/resources/notebooks/graph/commit1/Familie.ipynb",
+                "Familie.ipynb",
                 Set.of("/freg/en", "/freg/to", "/rå/familie", "/skatt/tre", "/skatt/fire"),
                 Set.of("/familie/en", "/familie/to")
         );
@@ -75,7 +75,7 @@ class ParserTest {
         Notebook fregNotebook = createNotebook(
                 "commit1",
                 "http://github.com/test/test",
-                "src/test/resources/notebooks/graph/commit1/Freg.ipynb",
+                "Freg.ipynb",
                 Set.of("/rå/freg/en", "/rå/freg/to", "/rå/freg/tre", "/rå/freg/fire"),
                 Set.of("/freg/en", "/freg/to", "/freg/tre", "/freg/fire")
         );
@@ -83,12 +83,13 @@ class ParserTest {
         Notebook skattNotebook = createNotebook(
                 "commit1",
                 "http://github.com/test/test",
-                "src/test/resources/notebooks/graph/commit1/Skatt.ipynb",
+                "Skatt.ipynb",
                 Set.of("/rå/skatt/en", "/rå/skatt/to", "/rå/skatt/tre", "/rå/skatt/fire"),
                 Set.of("/skatt/en", "/skatt/to", "/skatt/tre", "/skatt/fire")
         );
 
         List<Notebook> notebooks = store.getNotebooks();
+        assertThat(notebooks.get(0)).usingRecursiveComparison().isEqualTo(skattNotebook);
         assertThat(notebooks).usingFieldByFieldElementComparator()
                 .containsExactlyInAnyOrder(familyNotebook, skattNotebook, fregNotebook);
     }
@@ -105,7 +106,7 @@ class ParserTest {
         Notebook familyNotebook = createNotebook(
                 "commit2",
                 "http://github.com/test/test",
-                "src/test/resources/notebooks/graph/commit2/Familie.ipynb",
+                "Familie.ipynb",
                 Set.of("/skatt/en", "/skatt/to", "/freg/tre", "/freg/fire", "/rå/familie"),
                 Set.of("/familie/en", "/familie/to", "/familie/tre")
         );
@@ -113,7 +114,7 @@ class ParserTest {
         Notebook fregNotebook = createNotebook(
                 "commit2",
                 "http://github.com/test/test",
-                "src/test/resources/notebooks/graph/commit2/Freg.ipynb",
+                "Freg.ipynb",
                 Set.of("/rå/freg/en", "/rå/freg/to", "/rå/freg/tre", "/rå/freg/fire"),
                 Set.of("/freg/en", "/freg/to", "/freg/tre", "/freg/fire")
         );
@@ -121,7 +122,7 @@ class ParserTest {
         Notebook skattNotebook = createNotebook(
                 "commit2",
                 "http://github.com/test/test",
-                "src/test/resources/notebooks/graph/commit2/Skatt.ipynb",
+                "Skatt.ipynb",
                 Set.of("/rå/skatt/en", "/rå/skatt/to", "/rå/skatt/tre", "/rå/skatt/fire"),
                 Set.of("/skatt/en", "/skatt/to", "/skatt/tre", "/skatt/fire")
         );

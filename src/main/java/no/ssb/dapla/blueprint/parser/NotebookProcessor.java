@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import no.ssb.dapla.blueprint.notebook.Notebook;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Set;
@@ -17,10 +16,8 @@ public class NotebookProcessor {
         this.mapper = mapper;
     }
 
-    public Notebook process(File path) throws IOException {
-        var repositoryPath = path.toPath().getParent();
-        var relativePath = repositoryPath.relativize(path.toPath());
-        return process(repositoryPath, relativePath);
+    public Notebook process(String path, String notebookPath) throws IOException {
+        return process(Path.of(path), Path.of(notebookPath));
     }
 
     public Notebook process(Path path, Path notebookPath) throws IOException {

@@ -8,8 +8,10 @@ info:
 servers:
   - url: 'http://api.example.com/v1'
     description: Production server
-  - url: 'http://staging-api.example.com/v1'
+  - url: 'https://blueprint.staging-bip-app.ssb.no/api/v1'
     description: Staging server for testing
+  - url: 'http://localhost:10170/api/v1'
+    description: Local server
 paths:
   /repository:
     get:

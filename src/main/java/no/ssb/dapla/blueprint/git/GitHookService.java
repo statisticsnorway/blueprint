@@ -20,15 +20,24 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.NoSuchAlgorithmException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.*;
 
 import static io.helidon.common.http.Http.Status.*;
 
+/**
+ * A HTTP service that listens to github webhook to fetch and parse new commits.
+ *
+ * The repository are saved and reused. In order to facilitate addressing, the hash of the
+ * repository is used as a key.
+ */
 public class GitHookService implements Service {
 
     private static final Logger LOG = LoggerFactory.getLogger(GitHookService.class);

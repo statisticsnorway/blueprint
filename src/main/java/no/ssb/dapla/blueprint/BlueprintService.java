@@ -27,6 +27,9 @@ public class BlueprintService implements Service {
     static final MediaType APPLICATION_NOTEBOOK_JSON = MediaType.create(
             "application", "vnd.ssb.blueprint.notebook+json");
 
+    static final MediaType APPLICATION_JUPYTER_JSON = MediaType.create(
+            "application", "x-ipynb+json");
+
     static final MediaType APPLICATION_REVISION_JSON = MediaType.create(
             "application", "vnd.ssb.blueprint.revision+json");
 
@@ -85,6 +88,7 @@ public class BlueprintService implements Service {
                         .orFail()
                 )
                 .get("/revisions/{revID}/notebooks/{notebookID}", MediaTypeHandler.create()
+                        .accept(this::getNotebookContentHandler, APPLICATION_JUPYTER_JSON)
                         .accept(this::getNotebookHandler, APPLICATION_NOTEBOOK_JSON, APPLICATION_JSON)
                         .orFail()
                 )
@@ -94,6 +98,12 @@ public class BlueprintService implements Service {
                 .get("/revisions/{revID}/notebooks/{notebookID}/outputs", this::getNotebookOutputsHandler)
                 .get("/revisions/{revID}/notebooks/{notebookID}/previous", this::getPreviousNotebooksHandler)
                 .get("/revisions/{revID}/notebooks/{notebookID}/next", this::getNextNotebooksHandler);
+    }
+
+    private void getNotebookContentHandler(ServerRequest request, ServerResponse response) {
+        var revisionId = getRevisionId(request);
+        var notebooks = store.getNotebooks(revisionId);
+        // TODO: Get content from blobID.
     }
 
     private void getNotebooksHandler(ServerRequest request, ServerResponse response) {

@@ -46,6 +46,7 @@ class NotebookStoreTest {
 
         notebook.repositoryURL = "repo";
         notebook.commitId = "commitId";
+        notebook.blobId = "blobId";
         notebook.path = "/some/path";
         notebook.fileName = "/some/path";
 
@@ -61,6 +62,7 @@ class NotebookStoreTest {
 
         notebook.repositoryURL = "repo";
         notebook.commitId = "commitId";
+        notebook.blobId = "blobId";
         notebook.path = "/some/path";
         notebook.fileName = "/some/path";
         notebook.inputs = DS_ONE;
@@ -70,6 +72,7 @@ class NotebookStoreTest {
 
         notebook.repositoryURL = "repo";
         notebook.commitId = "commitId";
+        notebook.blobId = "blobId1";
         notebook.path = "/some/other/path";
         notebook.fileName = "/some/other/path";
         notebook.inputs = DS_TWO;
@@ -85,6 +88,7 @@ class NotebookStoreTest {
 
         notebook.repositoryURL = "repo";
         notebook.commitId = "commitId1";
+        notebook.blobId = "blobId1";
         notebook.path = "/some/path";
         notebook.fileName = "/some/path";
         notebook.inputs = DS_ONE;
@@ -94,6 +98,7 @@ class NotebookStoreTest {
 
         notebook.repositoryURL = "repo";
         notebook.commitId = "commitId2";
+        notebook.blobId = "blobId2";
         notebook.path = "/some/other/path";
         notebook.fileName = "/some/other/path";
         notebook.inputs = DS_TWO;
@@ -109,6 +114,7 @@ class NotebookStoreTest {
 
         notebook.repositoryURL = "repo";
         notebook.commitId = "changedCommit";
+        notebook.blobId = "blobId";
         notebook.path = "/some/path";
         notebook.fileName = "/some/path";
         notebook.changed = true;
@@ -119,6 +125,7 @@ class NotebookStoreTest {
 
         notebook.repositoryURL = "repo";
         notebook.commitId = "changedCommit";
+        notebook.blobId = "blobId";
         notebook.path = "/some/other/path";
         notebook.fileName = "/some/other/path";
         notebook.changed = true;

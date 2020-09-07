@@ -13,7 +13,7 @@ public class Notebook {
 
     public String repositoryURL;
     public String commitId;
-    public String blobId;
+    public String blobId = "";
     public String fileName;
     public String path;
     public Set<String> inputs = new HashSet<>();
