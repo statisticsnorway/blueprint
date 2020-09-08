@@ -11,6 +11,7 @@ server:
 github:
   username: "username"
   password: "password"
+  path: "repositories"
   secret: "hook-secret"
 
 neo4j:

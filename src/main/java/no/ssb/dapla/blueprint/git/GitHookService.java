@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.helidon.common.http.Http;
 import io.helidon.config.Config;
 import io.helidon.webserver.*;
+import no.ssb.dapla.blueprint.GitStore;
 import no.ssb.dapla.blueprint.NotebookStore;
 import no.ssb.dapla.blueprint.parser.GitNotebookProcessor;
 import no.ssb.dapla.blueprint.parser.Neo4jOutput;
@@ -13,20 +14,12 @@ import no.ssb.dapla.blueprint.parser.NotebookFileVisitor;
 import no.ssb.dapla.blueprint.parser.Parser;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
-import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
-import org.eclipse.jgit.util.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.net.URI;
 import java.security.NoSuchAlgorithmException;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.*;
 
@@ -49,39 +42,29 @@ public class GitHookService implements Service {
     private final ExecutorService parserExecutor;
     private final ObjectMapper mapper = new ObjectMapper();
     private final NotebookStore store;
+    private final GitStore gitStore;
 
     public GitHookService(Config config, NotebookStore store) throws NoSuchAlgorithmException {
         this.store = store;
         this.config = config;
         this.verifier = new GithubHookVerifier(config.get("github.secret").asString().get());
+        this.gitStore = new GitStore(config);
         // Keeping it simple for now.
         this.parserExecutor = Executors.newFixedThreadPool(4);
     }
 
-    public void checkoutAndParse(JsonNode payload) {
+    public synchronized void checkoutAndParse(JsonNode payload) {
 
         String repoUrl = payload.get("repository").get("clone_url").textValue();
-        Path repoDir = null;
-        try {
-            var cloneCall = Git.cloneRepository().setURI(repoUrl);
-            // TODO shallow clone. Not yet supported by JGit, see https://bugs.eclipse.org/bugs/show_bug.cgi?id=475615
-            if (config.get("github.username").hasValue() && config.get("github.password").hasValue()) {
-                cloneCall.setCredentialsProvider(new UsernamePasswordCredentialsProvider(
-                        config.get("github.username").asString().get(),
-                        config.get("github.password").asString().get()
-                ));
-            }
-            repoDir = Files.createTempDirectory(Paths.get(System.getProperty("user.dir")), "repo-");
 
+        try (Git git = Git.wrap(gitStore.get(URI.create(repoUrl)))) {
 
-            var path = Path.of(repoDir.getFileName().toString(),
-                    payload.get("repository").get("name").textValue());
-            Git git = cloneCall.setDirectory(path.toFile()).call();
             var commitId = payload.get("head_commit").get("id").textValue();
 
             // Checkout head_commit from repo
             git.checkout().setName(commitId).call();
 
+            var path = git.getRepository().getWorkTree().toPath();
             var processor = new GitNotebookProcessor(new ObjectMapper(), git);
             var visitor = new NotebookFileVisitor(Set.of(".git"));
             var output = new Neo4jOutput(store);
@@ -92,15 +75,6 @@ public class GitHookService implements Service {
             LOG.error("Error connecting to remote repository", e);
         } catch (IOException e) {
             LOG.error("Error parsing notebooks", e);
-        } finally {
-            // delete local repo
-            if (repoDir != null) {
-                try {
-                    FileUtils.delete(new File(repoDir.toString()), FileUtils.RECURSIVE);
-                } catch (IOException e) {
-                    LOG.error("Failed to delete repo at {}", repoDir.toString(), e);
-                }
-            }
         }
     }
 
@@ -115,18 +89,19 @@ public class GitHookService implements Service {
             JsonNode node = mapper.readTree(body);
 
             // Hooks need to respond within GITHOOK_TIMEOUT seconds so we run it async.
-            CompletableFuture.runAsync(() -> checkoutAndParse(node),
-                    parserExecutor).orTimeout(GITHOOK_TIMEOUT, TimeUnit.SECONDS).handle((parseResult, throwable) -> {
-                if (throwable == null) {
-                    response.status(CREATED_201).send();
-                } else if (throwable instanceof TimeoutException) {
-                    LOG.warn("Could not parse before timeout. Failures won't be reported");
-                    response.status(ACCEPTED_202).send();
-                } else {
-                    request.next(throwable);
-                }
-                return null;
-            });
+            CompletableFuture.runAsync(() -> checkoutAndParse(node), parserExecutor)
+                    .orTimeout(GITHOOK_TIMEOUT, TimeUnit.SECONDS)
+                    .handle((parseResult, throwable) -> {
+                        if (throwable == null) {
+                            response.status(CREATED_201).send();
+                        } else if (throwable instanceof TimeoutException) {
+                            LOG.warn("Could not parse before timeout. Failures won't be reported");
+                            response.status(ACCEPTED_202).send();
+                        } else {
+                            request.next(throwable);
+                        }
+                        return null;
+                    });
 
         } catch (RejectedExecutionException ree) {
             response.status(TOO_MANY_REQUESTS).send();
