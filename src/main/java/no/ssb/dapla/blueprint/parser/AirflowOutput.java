@@ -77,7 +77,7 @@ public class AirflowOutput implements Output {
         );
 
         template.process(model, out);
-        out.close();
+        out.flush();
     }
 
 }

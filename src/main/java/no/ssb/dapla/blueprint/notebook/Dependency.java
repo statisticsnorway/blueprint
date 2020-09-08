@@ -4,8 +4,8 @@ import java.util.Objects;
 
 public class Dependency {
 
-    private Notebook producer;
-    private Notebook consumer;
+    private final Notebook producer;
+    private final Notebook consumer;
 
     public Dependency(Notebook producer, Notebook consumer) {
         this.producer = producer;

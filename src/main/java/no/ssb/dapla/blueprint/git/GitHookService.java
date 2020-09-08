@@ -7,6 +7,7 @@ import io.helidon.common.http.Http;
 import io.helidon.config.Config;
 import io.helidon.webserver.*;
 import no.ssb.dapla.blueprint.NotebookStore;
+import no.ssb.dapla.blueprint.parser.GitNotebookProcessor;
 import no.ssb.dapla.blueprint.parser.Neo4jOutput;
 import no.ssb.dapla.blueprint.parser.NotebookFileVisitor;
 import no.ssb.dapla.blueprint.parser.Parser;
@@ -19,15 +20,24 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.NoSuchAlgorithmException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.*;
 
 import static io.helidon.common.http.Http.Status.*;
 
+/**
+ * A HTTP service that listens to github webhook to fetch and parse new commits.
+ *
+ * The repository are saved and reused. In order to facilitate addressing, the hash of the
+ * repository is used as a key.
+ */
 public class GitHookService implements Service {
 
     private static final Logger LOG = LoggerFactory.getLogger(GitHookService.class);
@@ -71,8 +81,11 @@ public class GitHookService implements Service {
 
             // Checkout head_commit from repo
             git.checkout().setName(commitId).call();
-            Parser parser = new Parser(new NotebookFileVisitor(Set.of()), new Neo4jOutput(store));
 
+            var processor = new GitNotebookProcessor(new ObjectMapper(), git);
+            var visitor = new NotebookFileVisitor(Set.of(".git"));
+            var output = new Neo4jOutput(store);
+            Parser parser = new Parser(visitor, output, processor);
             parser.parse(path, commitId, repoUrl);
 
         } catch (GitAPIException e) {

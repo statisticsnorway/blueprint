@@ -1,0 +1,201 @@
+openapi: 3.0.0
+info:
+  title: Blueprint API
+  description: >
+    The Blueprint service analyses ipybn notebooks in order to facilitate
+    headless execution.
+  version: 0.0.1
+servers:
+  - url: 'http://api.example.com/v1'
+    description: Production server
+  - url: 'https://blueprint.staging-bip-app.ssb.no/api/v1'
+    description: Staging server for testing
+  - url: 'http://localhost:10170/api/v1'
+    description: Local server
+paths:
+  /repository:
+    get:
+      summary: Return a list of repositories
+      responses:
+        '200':
+          description: The list of repositories.
+          content:
+            application/vnd.ssb.blueprint.repository+json:
+              schema:
+                $ref: '#/components/schemas/Repositories'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Repositories'
+  /repository/{repoID}/revisions:
+    summary: List the revisions for a repository
+    get:
+      parameters:
+        - $ref: '#/components/parameters/repositoryID'
+      responses:
+        '200':
+          description: The list of revisions
+          content:
+            application/vnd.ssb.blueprint.revision+json:
+              schema:
+                $ref: '#/components/schemas/Revisions'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Revisions'
+
+  /revisions/{revID}/notebooks:
+    summary: List the notebooks for a revision.
+    get:
+      parameters:
+        - $ref: '#/components/parameters/revisionID'
+        - name: diff
+          description: Use the diff to filter out the notebooks that did not change with the revision.
+          in: query
+          required: false
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: |
+            The list of notebooks. Note that the content-type can be used to return a directed aclyclic graph of the
+            notebooks.
+          content:
+            application/vnd.ssb.blueprint.dag+json:
+              schema:
+                $ref: '#/components/schemas/Graph'
+            application/vnd.ssb.blueprint.notebook+json:
+              schema:
+                $ref: '#/components/schemas/Notebooks'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Notebooks'
+
+  /revisions/{revID}/notebooks/{notebookID}:
+    summary: Get a notebook.
+    get:
+      parameters:
+        - $ref: '#/components/parameters/notebookID'
+        - $ref: '#/components/parameters/revisionID'
+      responses:
+        '200':
+          description: The notebook. Note that one can ask for the actual content of the file with the content type.
+          content:
+            application/vnd.jupyter:
+              schema:
+                type: object
+            application/vnd.ssb.blueprint.notebook+json:
+              schema:
+                $ref: '#/components/schemas/Notebook'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Notebook'
+
+  /revisions/{revID}/notebooks/{notebookID}/inputs:
+    summary: Get a notebook.
+    get:
+      parameters:
+        - $ref: '#/components/parameters/notebookID'
+        - $ref: '#/components/parameters/revisionID'
+      responses:
+        '200':
+          description: The input datasets
+
+  /revisions/{revID}/notebooks/{notebookID}/outputs:
+    summary: Get a notebook.
+    get:
+      parameters:
+        - $ref: '#/components/parameters/notebookID'
+        - $ref: '#/components/parameters/revisionID'
+      responses:
+        '200':
+          description: The output datasets
+
+  /revisions/{revID}/notebooks/{notebookID}/previous:
+    summary: List the notebooks this notebook depends on.
+    get:
+      parameters:
+        - $ref: '#/components/parameters/notebookID'
+        - $ref: '#/components/parameters/revisionID'
+      responses:
+        '200':
+          description: The output datasets
+
+  /revisions/{revID}/notebooks/{notebookID}/next:
+    summary: List the notebooks that depend on this notebook.
+    get:
+      parameters:
+        - $ref: '#/components/parameters/notebookID'
+        - $ref: '#/components/parameters/revisionID'
+      responses:
+        '200':
+          description: The output datasets
+
+components:
+  parameters:
+    repositoryID:
+      name: repoID
+      in: path
+      description: User ID
+      required: true
+      schema:
+        type: string
+    notebookID:
+      name: notebookID
+      in: path
+      description: Notebook identifier
+      required: true
+      schema:
+        type: string
+    revisionID:
+      name: revID
+      in: path
+      description: Revision identifier
+      required: true
+      schema:
+        type: string
+  schemas:
+    Repository:
+      type: object
+      properties:
+        id:
+          type: string
+    Repositories:
+      type: array
+      items:
+        $ref: '#/components/schemas/Repository'
+    Graph:
+      description: A directed acyclic graph (DAG) of the notebooks.
+      properties:
+        edges:
+          type: array
+          items:
+            $ref: '#/components/schemas/Dependency'
+    Dependency:
+      type: object
+      properties:
+        producer:
+          $ref: '#/components/schemas/Notebook'
+        consumer:
+          $ref: '#/components/schemas/Notebook'
+    Revisions:
+      type: array
+      items:
+        $ref: '#/components/schemas/Revision'
+    Revision:
+      type: object
+      properties:
+        id:
+          type: string
+    Notebooks:
+      type: array
+      items:
+        $ref: '#/components/schemas/Notebook'
+    Notebook:
+      type: object
+      properties:
+        id:
+          type: string
+    Dataset:
+      type: object
+      properties:
+        id:
+          type: string

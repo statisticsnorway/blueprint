@@ -9,7 +9,7 @@ import io.helidon.media.jackson.JacksonSupport;
 import io.helidon.metrics.MetricsSupport;
 import io.helidon.openapi.OpenAPISupport;
 import io.helidon.webserver.Routing;
-import io.helidon.webserver.ServerConfiguration;
+import io.helidon.webserver.StaticContentSupport;
 import io.helidon.webserver.WebServer;
 import io.helidon.webserver.WebTracingConfig;
 import io.helidon.webserver.accesslog.AccessLogSupport;
@@ -59,33 +59,43 @@ public class BlueprintApplication {
                 .build();
         MetricsSupport metrics = MetricsSupport.create();
 
-        BlueprintService blueprintService = new BlueprintService(config, driver);
+        var notebookStore = new NotebookStore(driver);
+        BlueprintService blueprintService = new BlueprintService(config, notebookStore);
+        GitHookService githubHookService = new GitHookService(config, notebookStore);
 
-        GitHookService githubHookService = new GitHookService(config, new NotebookStore(driver));
+        var rapidoc = StaticContentSupport.builder("/rapidoc")
+                .welcomeFileName("index.html").build();
+        var redoc = StaticContentSupport.builder("/redoc")
+                .welcomeFileName("index.html").build();
+        var swagger = StaticContentSupport.builder("/swagger")
+                .welcomeFileName("index.html").build();
 
+        var server = WebServer.builder();
 
-        ServerConfiguration.Builder serverConfig = ServerConfiguration.builder(config);
-        config.get("server.port").asInt().ifPresent(serverConfig::port);
+        server.routing(Routing.builder()
+                .register(AccessLogSupport.create(config.get("server.access-log")))
+                .register(WebTracingConfig.create(config.get("tracing")))
+                .register(OpenAPISupport.create(config))
+                .register(health)
+                .register(metrics)
+                .register("/swagger", swagger)
+                .register("/rapidoc", rapidoc)
+                .register("/redoc", redoc)
+
+                .register("/api/v1", blueprintService)
+                .register("/api/v1", githubHookService)
+        );
+        server.addMediaSupport(JacksonSupport.create());
+
+        config.get("server.port").asInt().ifPresent(server::port);
         config.get("server.host").asString().map(s -> {
             try {
                 return InetAddress.getByName(s);
             } catch (UnknownHostException e) {
                 throw new RuntimeException(e);
             }
-        }).ifPresent(serverConfig::bindAddress);
-
-        WebServer server = WebServer.builder(
-                Routing.builder()
-                        .register(AccessLogSupport.create(config.get("server.access-log")))
-                        .register(WebTracingConfig.create(config.get("tracing")))
-                        .register(OpenAPISupport.create(config))
-                        .register(health)
-                        .register(metrics)
-                        .register("/api/v1", blueprintService)
-                        .register("/api/v1", githubHookService)
-                        .build()
-        ).config(serverConfig).addMediaSupport(JacksonSupport.create()).build();
-        put(WebServer.class, server);
+        }).ifPresent(server::bindAddress);
+        put(WebServer.class, server.build());
     }
 
     public static void initLogging() {
@@ -104,8 +114,7 @@ public class BlueprintApplication {
         // print a message at shutdown. If unsuccessful, print the exception.
         app.get(WebServer.class).start()
                 .thenAccept(ws -> {
-                    System.out.println(
-                            "WEB server is up! http://" + ws.configuration().bindAddress()+ ":" + ws.port() + "/api/v1/githubhook");
+                    LOG.info("Server up and running: http://{}:{}/api/v1", ws.configuration().bindAddress(), ws.port());
                     ws.whenShutdown().thenRun(()
                             -> System.out.println("WEB server is DOWN. Good bye!"));
                 })

@@ -52,7 +52,7 @@ class GitHookServiceTest {
         String remoteRepoDirName = REMOTE_REPO_BASE_NAME + repoCounter;
         String remoteRepoDir = String.join(File.separator, tmpDirList.get(repoCounter).toString(), remoteRepoDirName) + File.separator;
         Files.createDirectory(Paths.get(remoteRepoDir));
-        copyFiles("/notebooks", remoteRepoDir);
+        copyFiles("/notebooks/foo", remoteRepoDir);
 
         // Create the fake remote Git repo
         Repository remoteRepo = new FileRepository(remoteRepoDir + ".git");

@@ -1,81 +1,143 @@
 package no.ssb.dapla.blueprint;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.helidon.common.http.Http;
+import io.helidon.common.http.MediaType;
 import io.helidon.config.Config;
 import io.helidon.webserver.Routing;
 import io.helidon.webserver.ServerRequest;
 import io.helidon.webserver.ServerResponse;
 import io.helidon.webserver.Service;
-import no.ssb.dapla.blueprint.git.GitHookService;
-import org.neo4j.driver.Driver;
-import org.neo4j.driver.Result;
-import org.neo4j.driver.Session;
-import org.neo4j.driver.summary.ResultSummary;
+import no.ssb.dapla.blueprint.notebook.Notebook;
+import no.ssb.dapla.blueprint.notebook.Repository;
+import no.ssb.dapla.blueprint.notebook.Revision;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Optional;
-import java.util.concurrent.CompletionStage;
+import java.util.List;
+import java.util.Objects;
 
-import static org.neo4j.driver.Values.parameters;
+import static io.helidon.common.http.MediaType.APPLICATION_JSON;
 
 public class BlueprintService implements Service {
+
+    static final MediaType APPLICATION_REPOSITORY_JSON = MediaType.create(
+            "application", "vnd.ssb.blueprint.repository+json");
+
+    static final MediaType APPLICATION_NOTEBOOK_JSON = MediaType.create(
+            "application", "vnd.ssb.blueprint.notebook+json");
+
+    static final MediaType APPLICATION_JUPYTER_JSON = MediaType.create(
+            "application", "x-ipynb+json");
+
+    static final MediaType APPLICATION_REVISION_JSON = MediaType.create(
+            "application", "vnd.ssb.blueprint.revision+json");
+
+    static final MediaType APPLICATION_DAG_JSON = MediaType.create(
+            "application", "vnd.ssb.blueprint.dag+json");
+
 
     private static final Logger LOG = LoggerFactory.getLogger(BlueprintService.class);
 
     private static final ObjectMapper mapper = new ObjectMapper();
 
-    private final Driver driver;
 
-    BlueprintService(Config config, Driver driver) {
-        this.driver = driver;
+    private final NotebookStore store;
+
+    BlueprintService(Config config, NotebookStore store) {
+        this.store = Objects.requireNonNull(store);
+    }
+
+    private static String getRevisionId(ServerRequest request) {
+        return Objects.requireNonNull(request.path().param("revID"));
+    }
+
+    private static String getNotebookId(ServerRequest request) {
+        return Objects.requireNonNull(request.path().param("notebookID"));
+    }
+
+    private void getRepositoriesHandler(ServerRequest request, ServerResponse response) {
+        response.status(Http.Status.OK_200).send(List.of(
+                new Repository("foo"),
+                new Repository("bar")
+        ));
+    }
+
+    private void getRevisionsHandler(ServerRequest request, ServerResponse response) {
+        response.status(Http.Status.OK_200).send(List.of(
+                new Revision("foo"),
+                new Revision("bar")
+        ));
     }
 
     @Override
     public void update(Routing.Rules rules) {
         rules
-                .put("/rev/{rev}", this::putRevisionHandler)
-                .get("/rev/{rev}", this::getRevisionHandler)
-                .delete("/rev/{rev}", this::deleteRevisionHandler)
-        ;
+                .get("/repository", MediaTypeHandler.create()
+                        .accept(this::getRepositoriesHandler, APPLICATION_REPOSITORY_JSON, APPLICATION_JSON)
+                        .orFail()
+                )
+
+                .get("/repository/{repoID}/revisions", MediaTypeHandler.create()
+                        .accept(this::getRevisionsHandler, APPLICATION_REVISION_JSON, APPLICATION_JSON)
+                        .orFail()
+                )
+                .get("/revisions/{revID}/notebooks", MediaTypeHandler.create()
+                        .accept(this::getNotebooksHandler, APPLICATION_NOTEBOOK_JSON, APPLICATION_JSON)
+                        .accept(this::getNotebooksDAGHandler, APPLICATION_DAG_JSON)
+                        .orFail()
+                )
+                .get("/revisions/{revID}/notebooks/{notebookID}", MediaTypeHandler.create()
+                        .accept(this::getNotebookContentHandler, APPLICATION_JUPYTER_JSON)
+                        .accept(this::getNotebookHandler, APPLICATION_NOTEBOOK_JSON, APPLICATION_JSON)
+                        .orFail()
+                )
+
+                // TODO: Those are maybe not that useful.
+                .get("/revisions/{revID}/notebooks/{notebookID}/inputs", this::getNotebookInputsHandler)
+                .get("/revisions/{revID}/notebooks/{notebookID}/outputs", this::getNotebookOutputsHandler)
+                .get("/revisions/{revID}/notebooks/{notebookID}/previous", this::getPreviousNotebooksHandler)
+                .get("/revisions/{revID}/notebooks/{notebookID}/next", this::getNextNotebooksHandler);
     }
 
-    private void putRevisionHandler(ServerRequest request, ServerResponse response) {
-        try (Session session = driver.session()) {
-            JsonNode node = mapper.valueToTree(session.writeTransaction(tx -> {
-                Result result = tx.run("CREATE (r:GitRevision) SET r.revision = $rev RETURN r",
-                        parameters("rev", request.path().param("rev")));
-                return result.single().get("r").asNode().asMap();
-            }));
-            response.status(201).send(node);
-        }
+    private void getNotebookContentHandler(ServerRequest request, ServerResponse response) {
+        var revisionId = getRevisionId(request);
+        var notebooks = store.getNotebooks(revisionId);
+        // TODO: Get content from blobID.
     }
 
-    private void getRevisionHandler(ServerRequest request, ServerResponse response) {
-        try (Session session = driver.session()) {
-            JsonNode node = mapper.valueToTree(session.readTransaction(tx -> {
-                Result result = tx.run("MATCH (r:GitRevision {revision: $rev}) RETURN r",
-                        parameters("rev", request.path().param("rev")));
-                return result.single().get("r").asNode().asMap();
-            }));
-            response.status(200).send(node);
-        }
+    private void getNotebooksHandler(ServerRequest request, ServerResponse response) {
+        var revisionId = getRevisionId(request);
+        var notebooks = store.getNotebooks(revisionId);
+        response.status(Http.Status.OK_200).send(notebooks);
     }
 
-    private void deleteRevisionHandler(ServerRequest request, ServerResponse response) {
-        try (Session session = driver.session()) {
-            ResultSummary resultSummary = session.writeTransaction(tx -> {
-                Result result = tx.run("MATCH (r:GitRevision {revision: $rev}) OPTIONAL MATCH (r)<--(nb) OPTIONAL MATCH (r)<--(nb)--(ds) DETACH DELETE r, nb, ds",
-                        parameters("rev", request.path().param("rev")));
-                return result.consume();
-            });
-            int nodesDeleted = resultSummary.counters().nodesDeleted();
-            int relationshipsDeleted = resultSummary.counters().relationshipsDeleted();
-            response.status(200).send(mapper.createObjectNode()
-                    .put("nodesDeleted", nodesDeleted)
-                    .put("relationshipsDeleted", relationshipsDeleted));
-        }
+    private void getNotebooksDAGHandler(ServerRequest request, ServerResponse response) {
+        var revisionId = getRevisionId(request);
+        var dependencies = store.getDependencies(revisionId);
+        response.status(Http.Status.OK_200).send(dependencies);
+    }
+
+    private void getNotebookHandler(ServerRequest request, ServerResponse response) {
+        var revisionId = getRevisionId(request);
+        var notebookId = getNotebookId(request);
+        Notebook notebook = store.getNotebook(revisionId, notebookId);
+        response.status(Http.Status.OK_200).send(notebook);
+    }
+
+    private void getNotebookOutputsHandler(ServerRequest request, ServerResponse response) {
+        request.next(new UnsupportedOperationException("TODO"));
+    }
+
+    private void getNotebookInputsHandler(ServerRequest request, ServerResponse response) {
+        request.next(new UnsupportedOperationException("TODO"));
+    }
+
+    private void getNextNotebooksHandler(ServerRequest request, ServerResponse response) {
+        request.next(new UnsupportedOperationException("TODO"));
+    }
+
+    private void getPreviousNotebooksHandler(ServerRequest request, ServerResponse response) {
+        request.next(new UnsupportedOperationException("TODO"));
     }
 }
