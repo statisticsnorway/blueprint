@@ -41,11 +41,11 @@ public class GitNotebookProcessor extends NotebookProcessor {
         var diffEntries = getDiffMap();
         var notebook = super.process(path, notebookPath);
 
-        notebook.blobId = getObjectId("HEAD", notebookPath);
+        notebook.setBlobId(getObjectId("HEAD", notebookPath));
 
         // Since we are only looking at all the files that exists a match always means
         // that the file was changed.
-        notebook.changed = diffEntries.containsKey(notebookPath.toString());
+        notebook.setChanged(diffEntries.containsKey(notebookPath.toString()));
         return notebook;
     }
 

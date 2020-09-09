@@ -2,6 +2,8 @@ package no.ssb.dapla.blueprint;
 
 import no.ssb.dapla.blueprint.notebook.Dependency;
 import no.ssb.dapla.blueprint.notebook.Notebook;
+import no.ssb.dapla.blueprint.notebook.Repository;
+import no.ssb.dapla.blueprint.notebook.Revision;
 import org.neo4j.driver.Record;
 import org.neo4j.driver.*;
 import org.neo4j.driver.types.Node;
@@ -15,16 +17,20 @@ import java.util.stream.Collectors;
 public class NotebookStore {
 
     private static final Query INSERT_NOTEBOOK = new Query("""
-            MERGE (rev:GitRevision {
-                commitId: $commitId,
-                repositoryURL: $repositoryURL
+            MERGE (repo:Repository {
+                repositoryId: $repositoryId,
+                repositoryURI: $repositoryURI
+            })
+                        
+            MERGE (repo)-[:CONTAINS]->(rev:GitRevision {
+                commitId: $commitId
             })
                         
             MERGE (rev)-[:MODIFIES]->(nb:Notebook {
+                blobId: $blobId,
                 fileName: $fileName,
                 path: $path,
-                changed: $changed,
-                blobId: $blobId
+                changed: $changed                
             })
                         
             WITH nb
@@ -46,17 +52,27 @@ public class NotebookStore {
     }
 
     public void addNotebook(Notebook notebook) {
+
+        Revision revision = notebook.getRevision();
+        Repository repository = revision.getRepository();
+
         try (Session session = driver.session()) {
             session.writeTransaction(tx -> {
                 var parameters = new HashMap<String, Object>();
-                parameters.put("fileName", notebook.fileName);
-                parameters.put("path", notebook.path);
-                parameters.put("commitId", notebook.commitId);
-                parameters.put("changed", notebook.changed);
-                parameters.put("repositoryURL", notebook.repositoryURL);
-                parameters.put("inputs", notebook.inputs);
-                parameters.put("outputs", notebook.outputs);
-                parameters.put("blobId", notebook.blobId);
+                parameters.put("repositoryId", repository.getId());
+                parameters.put("repositoryURI", repository.getUri().toASCIIString());
+
+                parameters.put("commitId", revision.getId());
+
+                // Note the to string here. Path implement Iterable<Iterable<Path>> so neo4j fails with
+                // StackOverflowError.
+                parameters.put("fileName", notebook.getFileName().toString());
+                parameters.put("path", notebook.getPath().toString());
+
+                parameters.put("changed", notebook.isChanged());
+                parameters.put("inputs", notebook.getInputs());
+                parameters.put("outputs", notebook.getOutputs());
+                parameters.put("blobId", notebook.getBlobId());
                 return tx.run(INSERT_NOTEBOOK.withParameters(parameters));
             });
         }
@@ -78,9 +94,10 @@ public class NotebookStore {
                         "diff", diff
                 );
                 Result result = tx.run("""
-                        MATCH (rev:GitRevision)-[:MODIFIES]->(nb:Notebook)-[t:CONSUMES|PRODUCES]->(ds:Dataset)
+                        MATCH (repo:Repository)-[:CONTAINS]->(rev:GitRevision)
+                        MATCH (rev)-[:MODIFIES]->(nb:Notebook)-[t:CONSUMES|PRODUCES]->(ds:Dataset)
                         WHERE $commitId is null or rev.commitId = $commitId and $diff is null or nb.changed = $diff
-                        RETURN rev, nb, ds, t
+                        RETURN repo, rev, nb, t, ds
                         """, parameters);
                 Map<Node, List<Record>> map = result.stream().collect(
                         Collectors.groupingBy(record -> record.get("nb").asNode()));
@@ -90,27 +107,32 @@ public class NotebookStore {
 
                     var notebook = nodeToNotebook(node);
 
-                    notebook.repositoryURL = map.get(node).stream()
-                            .map(record -> record.get("rev"))
-                            .map(value -> value.get("repositoryURL").asString())
+                    Repository repository = map.get(node).stream().map(record -> record.get("repo").asNode())
                             .findFirst()
-                            .orElseThrow();
+                            .map(repo -> new Repository(
+                                    repo.get("repositoryURI").asString()
+                            )).orElseThrow();
 
-                    notebook.commitId = map.get(node).stream()
-                            .map(record -> record.get("rev"))
-                            .map(value -> value.get("commitId").asString())
+                    Revision revision = map.get(node).stream().map(record -> record.get("rev").asNode())
                             .findFirst()
-                            .orElseThrow();
+                            .map(repo -> new Revision(
+                                    repo.get("commitId").asString()
+                            )).orElseThrow();
 
-                    notebook.outputs = map.get(node).stream()
+                    revision.setRepository(repository);
+                    notebook.setRevision(revision);
+
+                    notebook.setOutputs(map.get(node).stream()
                             .filter(record -> record.get("t").asRelationship().hasType("PRODUCES"))
                             .map(record -> record.get("ds").asNode().get("path").asString())
-                            .collect(Collectors.toSet());
+                            .collect(Collectors.toSet())
+                    );
 
-                    notebook.inputs = map.get(node).stream()
+                    notebook.setInputs(map.get(node).stream()
                             .filter(record -> record.get("t").asRelationship().hasType("CONSUMES"))
                             .map(record -> record.get("ds").asNode().get("path").asString())
-                            .collect(Collectors.toSet());
+                            .collect(Collectors.toSet())
+                    );
 
                     nbResult.add(notebook);
                 }
@@ -145,10 +167,9 @@ public class NotebookStore {
 
     private Notebook nodeToNotebook(Node node) {
         Notebook notebook = new Notebook();
-        notebook.fileName = node.get("fileName").asString();
-        notebook.path = node.get("path").asString();
-        notebook.changed = node.get("changed").asBoolean();
-        notebook.blobId = node.get("blobId").asString();
+        notebook.setPath(node.get("path").asString());
+        notebook.setChanged(node.get("changed").asBoolean());
+        notebook.setBlobId(node.get("blobId").asString());
         return notebook;
     }
 }

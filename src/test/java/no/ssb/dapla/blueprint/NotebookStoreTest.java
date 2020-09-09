@@ -1,12 +1,13 @@
 package no.ssb.dapla.blueprint;
 
 import no.ssb.dapla.blueprint.notebook.Notebook;
+import no.ssb.dapla.blueprint.notebook.Repository;
+import no.ssb.dapla.blueprint.notebook.Revision;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.neo4j.driver.Driver;
 
-import java.util.List;
 import java.util.Set;
 
 @ExtendWith(EmbeddedNeo4jExtension.class)
@@ -40,43 +41,57 @@ class NotebookStoreTest {
         store = new NotebookStore(driver);
     }
 
+    private Notebook createNotebook(String repositoryUri, String commitId, String blobId, String path,
+                                    Set<String> inputs, Set<String> outputs) {
+
+        var repository = new Repository(repositoryUri);
+        var revision = new Revision(commitId);
+        var notebook = new Notebook();
+        notebook.setRevision(revision);
+        revision.setRepository(repository);
+
+        notebook.setBlobId(blobId);
+        notebook.setPath(path);
+        notebook.setInputs(inputs);
+        notebook.setOutputs(outputs);
+
+        return notebook;
+    }
+
     @Test
     void testInsertNotebook() {
-        Notebook notebook = new Notebook();
-
-        notebook.repositoryURL = "repo";
-        notebook.commitId = "commitId";
-        notebook.blobId = "blobId";
-        notebook.path = "/some/path";
-        notebook.fileName = "/some/path";
-
-        notebook.inputs = DS_ONE;
-        notebook.outputs = DS_TWO;
-
+        Notebook notebook = createNotebook(
+                "repo",
+                "commitId",
+                "blobId",
+                "/some/path",
+                DS_ONE,
+                DS_TWO
+        );
         store.addNotebook(notebook);
     }
 
     @Test
     void testInsertNotebooksWithMatchingInputOutput() {
-        Notebook notebook = new Notebook();
-
-        notebook.repositoryURL = "repo";
-        notebook.commitId = "commitId";
-        notebook.blobId = "blobId";
-        notebook.path = "/some/path";
-        notebook.fileName = "/some/path";
-        notebook.inputs = DS_ONE;
-        notebook.outputs = DS_TWO;
+        Notebook notebook = createNotebook(
+                "repo",
+                "commitId",
+                "blobId",
+                "/some/path",
+                DS_ONE,
+                DS_TWO
+        );
 
         store.addNotebook(notebook);
 
-        notebook.repositoryURL = "repo";
-        notebook.commitId = "commitId";
-        notebook.blobId = "blobId1";
-        notebook.path = "/some/other/path";
-        notebook.fileName = "/some/other/path";
-        notebook.inputs = DS_TWO;
-        notebook.outputs = DS_THREE;
+        notebook = createNotebook(
+                "repo",
+                "commitId",
+                "blobId",
+                "/some/path",
+                DS_TWO,
+                DS_THREE
+        );
         store.addNotebook(notebook);
 
     }
@@ -84,25 +99,25 @@ class NotebookStoreTest {
     @Test
     void testInsertWithMatchingInputOutputDifferentCommits() {
 
-        Notebook notebook = new Notebook();
-
-        notebook.repositoryURL = "repo";
-        notebook.commitId = "commitId1";
-        notebook.blobId = "blobId1";
-        notebook.path = "/some/path";
-        notebook.fileName = "/some/path";
-        notebook.inputs = DS_ONE;
-        notebook.outputs = DS_TWO;
+        Notebook notebook = createNotebook(
+                "repo",
+                "commitId1",
+                "blobId1",
+                "/some/path",
+                DS_ONE,
+                DS_TWO
+        );
 
         store.addNotebook(notebook);
 
-        notebook.repositoryURL = "repo";
-        notebook.commitId = "commitId2";
-        notebook.blobId = "blobId2";
-        notebook.path = "/some/other/path";
-        notebook.fileName = "/some/other/path";
-        notebook.inputs = DS_TWO;
-        notebook.outputs = DS_THREE;
+        notebook = createNotebook(
+                "repo",
+                "commitId2",
+                "blobId2",
+                "/some/other/path",
+                DS_TWO,
+                DS_THREE
+        );
         store.addNotebook(notebook);
 
     }
@@ -110,27 +125,26 @@ class NotebookStoreTest {
     @Test
     void testQueryDiff() {
 
-        Notebook notebook = new Notebook();
-
-        notebook.repositoryURL = "repo";
-        notebook.commitId = "changedCommit";
-        notebook.blobId = "blobId";
-        notebook.path = "/some/path";
-        notebook.fileName = "/some/path";
-        notebook.changed = true;
-        notebook.inputs = DS_ONE;
-        notebook.outputs = DS_TWO;
-
+        Notebook notebook = createNotebook(
+                "repo",
+                "changedCommit",
+                "blobId",
+                "/some/path",
+                DS_ONE,
+                DS_TWO
+        );
+        notebook.setChanged(true);
         store.addNotebook(notebook);
 
-        notebook.repositoryURL = "repo";
-        notebook.commitId = "changedCommit";
-        notebook.blobId = "blobId";
-        notebook.path = "/some/other/path";
-        notebook.fileName = "/some/other/path";
-        notebook.changed = true;
-        notebook.inputs = DS_TWO;
-        notebook.outputs = DS_THREE;
+        notebook = createNotebook(
+                "repo",
+                "changedCommit",
+                "blobId",
+                "/some/other/path",
+                DS_TWO,
+                DS_THREE
+        );
+        notebook.setChanged(true);
         store.addNotebook(notebook);
 
 

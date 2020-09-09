@@ -9,6 +9,6 @@ public class DebugOutput implements Output {
     private static final Logger log = LoggerFactory.getLogger(DebugOutput.class);
 
     public void output(Notebook notebook) {
-        log.debug("Notebook {}", notebook.fileName);
+        log.debug("Notebook {}", notebook.getFileName());
     }
 }

@@ -20,12 +20,12 @@ class NotebookProcessorTest {
     @Test
     void testCanParseNotebook() throws IOException {
         Notebook notebook = processor.process("src/test/resources/notebooks", "foo/notebook-with-metadata.ipynb");
-        assertThat(notebook.fileName).isEqualTo("notebook-with-metadata.ipynb");
-        assertThat(notebook.path).endsWith("foo/notebook-with-metadata.ipynb");
-        assertThat(notebook.inputs).contains(
+        assertThat(notebook.getFileName().toString()).isEqualTo("notebook-with-metadata.ipynb");
+        assertThat(notebook.getPath().toString()).endsWith("foo/notebook-with-metadata.ipynb");
+        assertThat(notebook.getInputs()).contains(
                 "/some/input/path", "/some/other/input/path"
         );
-        assertThat(notebook.outputs).contains(
+        assertThat(notebook.getOutputs()).contains(
                 "/some/path", "/some/other/path"
         );
     }
@@ -35,27 +35,27 @@ class NotebookProcessorTest {
         // Test against some of the strings from
         // https://github.com/minimaxir/big-list-of-naughty-strings/blob/master/blns.txt
         Notebook notebook = processor.process("src/test/resources/notebooks", "foo/notebook-with-weird-metadata.ipynb");
-        assertThat(notebook.fileName).isEqualTo("notebook-with-weird-metadata.ipynb");
-        assertThat(notebook.path).endsWith("foo/notebook-with-weird-metadata.ipynb");
-        assertThat(notebook.inputs).isNotEmpty();
-        assertThat(notebook.outputs).isNotEmpty();
+        assertThat(notebook.getFileName().toString()).isEqualTo("notebook-with-weird-metadata.ipynb");
+        assertThat(notebook.getPath().toString()).endsWith("foo/notebook-with-weird-metadata.ipynb");
+        assertThat(notebook.getInputs()).isNotEmpty();
+        assertThat(notebook.getOutputs()).isNotEmpty();
     }
 
     @Test
     void testSupportsMissingMetadata() throws IOException {
         Notebook notebook = processor.process("src/test/resources/notebooks", "foo/notebook-without-metadata.ipynb");
-        assertThat(notebook.fileName).isEqualTo("notebook-without-metadata.ipynb");
-        assertThat(notebook.path).endsWith("foo/notebook-without-metadata.ipynb");
-        assertThat(notebook.inputs).isEmpty();
-        assertThat(notebook.outputs).isEmpty();
+        assertThat(notebook.getFileName().toString()).isEqualTo("notebook-without-metadata.ipynb");
+        assertThat(notebook.getPath().toString()).endsWith("foo/notebook-without-metadata.ipynb");
+        assertThat(notebook.getInputs()).isEmpty();
+        assertThat(notebook.getOutputs()).isEmpty();
     }
 
     @Test
     void testSupportsEmptyMetadata() throws IOException {
         Notebook notebook = processor.process("src/test/resources/notebooks", "foo/notebook-with-empty-metadata.ipynb");
-        assertThat(notebook.fileName).isEqualTo("notebook-with-empty-metadata.ipynb");
-        assertThat(notebook.path).endsWith("foo/notebook-with-empty-metadata.ipynb");
-        assertThat(notebook.inputs).isEmpty();
-        assertThat(notebook.outputs).isEmpty();
+        assertThat(notebook.getFileName().toString()).isEqualTo("notebook-with-empty-metadata.ipynb");
+        assertThat(notebook.getPath().toString()).endsWith("foo/notebook-with-empty-metadata.ipynb");
+        assertThat(notebook.getInputs()).isEmpty();
+        assertThat(notebook.getOutputs()).isEmpty();
     }
 }

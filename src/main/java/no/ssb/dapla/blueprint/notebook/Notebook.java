@@ -1,7 +1,8 @@
 package no.ssb.dapla.blueprint.notebook;
 
+import java.net.URI;
+import java.nio.file.Path;
 import java.util.HashSet;
-import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -11,65 +12,74 @@ import java.util.Set;
  */
 public class Notebook {
 
-    public String repositoryURL;
-    public String commitId;
-    public String blobId = "";
-    public String fileName;
-    public String path;
-    public Set<String> inputs = new HashSet<>();
-    public Set<String> outputs = new HashSet<>();
-    public Boolean changed = true;
+    private String blobId = "";
+    private Path path;
+    private Set<String> inputs = new HashSet<>();
+    private Set<String> outputs = new HashSet<>();
+    private Boolean changed = true;
+    private Revision revision;
+
+    public Revision getRevision() {
+        return revision;
+    }
+
+    public void setRevision(Revision revision) {
+        this.revision = revision;
+    }
 
     public String getBlobId() {
         return blobId;
     }
 
-    public Boolean getChanged() {
+    public void setBlobId(String blobId) {
+        this.blobId = blobId;
+    }
+
+    public Boolean isChanged() {
         return changed;
     }
 
-    public String getRepositoryURL() {
-        return repositoryURL;
+    public void setChanged(Boolean changed) {
+        this.changed = changed;
+    }
+
+    public URI getRepositoryUri() {
+        return getRevision().getRepository().getUri();
     }
 
     public String getCommitId() {
-        return commitId;
+        return getRevision().getId();
     }
 
-    public String getFileName() {
-        return fileName;
+    public Path getFileName() {
+        return getPath().getFileName();
     }
 
     public Set<String> getInputs() {
         return inputs;
     }
 
+    public void setInputs(Set<String> inputs) {
+        this.inputs = inputs;
+    }
+
     public Set<String> getOutputs() {
         return outputs;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        Notebook notebook = (Notebook) o;
-        return fileName.equals(notebook.fileName) &&
-                path.equals(notebook.path);
+    public void setOutputs(Set<String> outputs) {
+        this.outputs = outputs;
     }
 
-    /**
-     * Currently returns the hash code.
-     */
-    public String getId() {
-        return Integer.toHexString(hashCode());
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(fileName, path);
-    }
-
-    public String getPath() {
+    public Path getPath() {
         return path;
+    }
+
+    public void setPath(Path path) {
+        this.path = path;
+    }
+
+    public void setPath(String path) {
+        setPath(Path.of(path));
     }
 }

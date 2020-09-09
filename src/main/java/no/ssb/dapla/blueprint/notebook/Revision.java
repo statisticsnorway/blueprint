@@ -2,13 +2,22 @@ package no.ssb.dapla.blueprint.notebook;
 
 public class Revision {
 
-    public String getSha() {
-        return sha;
+    private final String id;
+    private Repository repository;
+
+    public Revision(String id) {
+        this.id = id;
     }
 
-    private final String sha;
+    public String getId() {
+        return id;
+    }
 
-    public Revision(String sha) {
-        this.sha = sha;
+    public Repository getRepository() {
+        return repository;
+    }
+
+    public void setRepository(Repository repository) {
+        this.repository = repository;
     }
 }

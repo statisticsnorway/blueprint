@@ -25,8 +25,7 @@ public class NotebookProcessor {
         JsonNode jsonNode = mapper.readTree(path.resolve(notebookPath).toFile());
 
         Notebook notebook = new Notebook();
-        notebook.fileName = notebookPath.getFileName().toString();
-        notebook.path = notebookPath.toString();
+        notebook.setPath(notebookPath);
 
         JsonNode cells = jsonNode.get("cells");
         processCells(notebook, cells);
@@ -64,11 +63,11 @@ public class NotebookProcessor {
             }
 
             if ("!inputs".equals(textLine)) {
-                set = notebook.inputs;
+                set = notebook.getInputs();
                 continue;
             }
             if ("!outputs".equals(textLine)) {
-                set = notebook.outputs;
+                set = notebook.getOutputs();
                 continue;
             }
 

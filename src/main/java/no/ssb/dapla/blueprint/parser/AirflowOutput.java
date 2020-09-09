@@ -43,10 +43,10 @@ public class AirflowOutput implements Output {
 
     @Override
     public void output(Notebook notebook) {
-        for (String input : notebook.inputs) {
+        for (String input : notebook.getInputs()) {
             consumers.computeIfAbsent(input, s -> new HashSet<>()).add(notebook);
         }
-        for (String output : notebook.outputs) {
+        for (String output : notebook.getOutputs()) {
             producers.computeIfAbsent(output, s -> new HashSet<>()).add(notebook);
         }
         notebooks.add(notebook);
@@ -61,7 +61,7 @@ public class AirflowOutput implements Output {
         // Notebook and Dependency are important.
         Set<Dependency> dependencies = new HashSet<>();
         for (var notebook : notebooks) {
-            for (var output : notebook.outputs) {
+            for (var output : notebook.getOutputs()) {
                 for (var consumer : consumers.getOrDefault(output, Set.of())) {
                     dependencies.add(new Dependency(notebook, consumer));
                 }
