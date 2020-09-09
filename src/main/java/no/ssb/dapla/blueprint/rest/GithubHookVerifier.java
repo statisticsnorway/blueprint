@@ -14,7 +14,7 @@ import java.util.Optional;
 public class GithubHookVerifier {
 
     private static final String HMAC_SHA1 = "HmacSHA1";
-    private static final Logger logger = LoggerFactory.getLogger(GitHookService.class);
+    private static final Logger logger = LoggerFactory.getLogger(GithubHookService.class);
     private static final int SIGNATURE_LENGTH = 45;
     private static final String SHA_PREFIX = "sha1=";
     private static final String HEX_CHARS = "0123456789abcdef";

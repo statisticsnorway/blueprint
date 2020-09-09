@@ -30,21 +30,21 @@ import java.util.stream.Stream;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @ExtendWith(EmbeddedNeo4jExtension.class)
-class GitHookServiceTest {
+class GithubHookServiceTest {
 
     private static final String REMOTE_REPO_BASE_NAME = "remoteRepo_";
     private static final String NOTEBOOK_NAME = "notebook-with-metadata";
     private static final String NOTEBOOK_FILE_EXTENSION = ".ipynb";
     private List<Path> tmpDirList = new ArrayList<>();
 
-    private GitHookService handler;
+    private GithubHookService handler;
 
 
     Git createRemoteRepo(Config config, Driver driver, int repoCounter) throws Exception {
 
         driver.session().writeTransaction(tx -> tx.run("MATCH (n) DETACH DELETE n"));
 
-        handler = new GitHookService(config, new NotebookStore(driver), new GitStore(config));
+        handler = new GithubHookService(config, new NotebookStore(driver), new GitStore(config));
 
         // set up local and fake remote Git repo
         tmpDirList.add(Files.createTempDirectory(null));
@@ -214,7 +214,7 @@ class GitHookServiceTest {
     }
 
     private void copyFiles(String source, String destination) throws IOException {
-        Path testNotebooks = Paths.get(GitHookServiceTest.class.getResource(source).getPath());
+        Path testNotebooks = Paths.get(GithubHookServiceTest.class.getResource(source).getPath());
         Path destinationPath = Paths.get(destination);
         Stream<Path> jupyterNotebooks = Files.walk(testNotebooks, 1);
         jupyterNotebooks.forEach(notebook -> {

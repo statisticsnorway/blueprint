@@ -17,7 +17,7 @@ import no.ssb.dapla.blueprint.health.Neo4jHealthCheck;
 import no.ssb.dapla.blueprint.neo4j.GitStore;
 import no.ssb.dapla.blueprint.neo4j.NotebookStore;
 import no.ssb.dapla.blueprint.rest.BlueprintService;
-import no.ssb.dapla.blueprint.rest.GitHookService;
+import no.ssb.dapla.blueprint.rest.GithubHookService;
 import org.neo4j.driver.AuthTokens;
 import org.neo4j.driver.Driver;
 import org.neo4j.driver.GraphDatabase;
@@ -66,7 +66,7 @@ public class BlueprintApplication {
         var gitStore = new GitStore(config);
 
         BlueprintService blueprintService = new BlueprintService(config, notebookStore);
-        GitHookService githubHookService = new GitHookService(config, notebookStore, gitStore);
+        GithubHookService githubHookService = new GithubHookService(config, notebookStore, gitStore);
 
         var rapidoc = StaticContentSupport.builder("/rapidoc")
                 .welcomeFileName("index.html").build();

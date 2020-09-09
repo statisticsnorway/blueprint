@@ -34,9 +34,9 @@ import static io.helidon.common.http.Http.Status.*;
  * The repository are saved and reused. In order to facilitate addressing, the hash of the
  * repository is used as a key.
  */
-public class GitHookService implements Service {
+public class GithubHookService implements Service {
 
-    private static final Logger LOG = LoggerFactory.getLogger(GitHookService.class);
+    private static final Logger LOG = LoggerFactory.getLogger(GithubHookService.class);
     private static final Http.ResponseStatus TOO_MANY_REQUESTS = Http.ResponseStatus.create(429, "Too Many Requests");
     private static final String HOOK_PATH = "/githubhook";
     private static final int GITHOOK_TIMEOUT = 10;
@@ -47,7 +47,7 @@ public class GitHookService implements Service {
     private final NotebookStore notebookStore;
     private final GitStore gitStore;
 
-    public GitHookService(Config config, NotebookStore notebookStore, GitStore gitStore) throws NoSuchAlgorithmException {
+    public GithubHookService(Config config, NotebookStore notebookStore, GitStore gitStore) throws NoSuchAlgorithmException {
         this.notebookStore = Objects.requireNonNull(notebookStore);
         this.config = Objects.requireNonNull(config);
         this.gitStore = Objects.requireNonNull(gitStore);
