@@ -60,8 +60,10 @@ public class BlueprintApplication {
         MetricsSupport metrics = MetricsSupport.create();
 
         var notebookStore = new NotebookStore(driver);
+        var gitStore = new GitStore(config);
+
         BlueprintService blueprintService = new BlueprintService(config, notebookStore);
-        GitHookService githubHookService = new GitHookService(config, notebookStore);
+        GitHookService githubHookService = new GitHookService(config, notebookStore, gitStore);
 
         var rapidoc = StaticContentSupport.builder("/rapidoc")
                 .welcomeFileName("index.html").build();

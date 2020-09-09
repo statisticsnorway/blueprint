@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.helidon.config.Config;
 import no.ssb.dapla.blueprint.EmbeddedNeo4jExtension;
+import no.ssb.dapla.blueprint.GitStore;
 import no.ssb.dapla.blueprint.NotebookStore;
 import no.ssb.dapla.blueprint.notebook.Notebook;
 import org.eclipse.jgit.api.Git;
@@ -43,7 +44,7 @@ class GitHookServiceTest {
 
         driver.session().writeTransaction(tx -> tx.run("MATCH (n) DETACH DELETE n"));
 
-        handler = new GitHookService(config, new NotebookStore(driver));
+        handler = new GitHookService(config, new NotebookStore(driver), new GitStore(config));
 
         // set up local and fake remote Git repo
         tmpDirList.add(Files.createTempDirectory(null));

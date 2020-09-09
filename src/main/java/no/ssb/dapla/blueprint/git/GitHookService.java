@@ -20,6 +20,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.net.URI;
 import java.security.NoSuchAlgorithmException;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.*;
 
@@ -27,7 +28,7 @@ import static io.helidon.common.http.Http.Status.*;
 
 /**
  * A HTTP service that listens to github webhook to fetch and parse new commits.
- *
+ * <p>
  * The repository are saved and reused. In order to facilitate addressing, the hash of the
  * repository is used as a key.
  */
@@ -41,15 +42,14 @@ public class GitHookService implements Service {
     private final GithubHookVerifier verifier;
     private final ExecutorService parserExecutor;
     private final ObjectMapper mapper = new ObjectMapper();
-    private final NotebookStore store;
+    private final NotebookStore notebookStore;
     private final GitStore gitStore;
 
-    public GitHookService(Config config, NotebookStore store) throws NoSuchAlgorithmException {
-        this.store = store;
-        this.config = config;
+    public GitHookService(Config config, NotebookStore notebookStore, GitStore gitStore) throws NoSuchAlgorithmException {
+        this.notebookStore = Objects.requireNonNull(notebookStore);
+        this.config = Objects.requireNonNull(config);
+        this.gitStore = Objects.requireNonNull(gitStore);
         this.verifier = new GithubHookVerifier(config.get("github.secret").asString().get());
-        this.gitStore = new GitStore(config);
-        // Keeping it simple for now.
         this.parserExecutor = Executors.newFixedThreadPool(4);
     }
 
@@ -67,7 +67,7 @@ public class GitHookService implements Service {
             var path = git.getRepository().getWorkTree().toPath();
             var processor = new GitNotebookProcessor(new ObjectMapper(), git);
             var visitor = new NotebookFileVisitor(Set.of(".git"));
-            var output = new Neo4jOutput(store);
+            var output = new Neo4jOutput(notebookStore);
             Parser parser = new Parser(visitor, output, processor);
             parser.parse(path, commitId, repoUrl);
 

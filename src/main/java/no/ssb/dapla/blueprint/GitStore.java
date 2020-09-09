@@ -9,16 +9,15 @@ import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
+import org.eclipse.jgit.util.Hex;
 
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
-import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -31,21 +30,19 @@ public class GitStore {
     private static final Path GIT_FOLDER = Path.of(".git");
     private static final Path LINKS_FOLDER = Path.of("links");
 
-    private final Map<URI, ByteBuffer> hashRemoteMap = new HashMap<>();
-
     // TODO: Use a proper cache.
-    private final Map<ByteBuffer, Repository> hashRepoMap = new HashMap<>();
+    private final Map<String, Repository> hashRepoMap = new HashMap<>();
     private final Config config;
 
     public GitStore(Config config) {
         this.config = Objects.requireNonNull(config);
     }
 
-    private static ByteBuffer computeHash(URI remote) {
+    private static String computeHash(URI remote) {
         try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            MessageDigest digest = MessageDigest.getInstance("SHA-1");
             var hash = digest.digest(remote.normalize().toASCIIString().getBytes());
-            return ByteBuffer.wrap(hash);
+            return Hex.toHexString(hash);
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalArgumentException(e);
         }
@@ -55,7 +52,7 @@ public class GitStore {
      * Initialize, clone and fetch a repository.
      */
     public Repository get(URI remote) throws IOException, GitAPIException {
-        var hash = hashRemoteMap.computeIfAbsent(remote, GitStore::computeHash);
+        String hash = computeHash(remote);
 
         // Initialize.
         if (!hashRepoMap.containsKey(hash)) {
@@ -71,7 +68,7 @@ public class GitStore {
     }
 
     /**
-     * Helper to
+     * Helper that authenticates git commands.
      */
     private <R, C extends GitCommand<R>> TransportCommand<C, R> authenticate(TransportCommand<C, R> command) {
         if (config.get("github.username").hasValue() && config.get("github.password").hasValue()) {
@@ -83,18 +80,17 @@ public class GitStore {
         return command;
     }
 
-    private Repository initializeRepository(ByteBuffer hash, URI remote) throws IOException, GitAPIException {
-        Path basePath = Path.of(config.get("github.path").asString().get());
-        String base64Hash = Base64.getEncoder().encodeToString(hash.array());
+    private Repository initializeRepository(String hashPath, URI remote) throws IOException, GitAPIException {
+        Path repositoryPath = Path.of(config.get("github.path").asString().get());
 
         // Create the file
-        File hashFile = basePath.resolve(base64Hash).toFile();
+        File hashFile = repositoryPath.resolve(hashPath).toFile();
         if (!hashFile.exists()) {
             Files.createDirectories(hashFile.toPath());
         }
 
         // Create a link for administration. Note the substring to get rid of the first '/'.
-        File linkFile = basePath.resolve(LINKS_FOLDER).resolve(remote.getPath().substring(1)).toFile();
+        File linkFile = repositoryPath.resolve(LINKS_FOLDER).resolve(remote.getPath().substring(1)).toFile();
         if (!linkFile.exists()) {
             Files.createDirectories(linkFile.toPath().getParent());
             Files.createSymbolicLink(
