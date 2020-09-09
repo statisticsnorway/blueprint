@@ -2,7 +2,7 @@ package no.ssb.dapla.blueprint.parser;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import no.ssb.dapla.blueprint.notebook.Notebook;
+import no.ssb.dapla.blueprint.neo4j.model.Notebook;
 
 import java.io.IOException;
 import java.nio.file.Path;

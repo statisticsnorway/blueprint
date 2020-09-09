@@ -1,9 +1,9 @@
-package no.ssb.dapla.blueprint;
+package no.ssb.dapla.blueprint.neo4j;
 
-import no.ssb.dapla.blueprint.notebook.Dependency;
-import no.ssb.dapla.blueprint.notebook.Notebook;
-import no.ssb.dapla.blueprint.notebook.Repository;
-import no.ssb.dapla.blueprint.notebook.Revision;
+import no.ssb.dapla.blueprint.neo4j.model.Dependency;
+import no.ssb.dapla.blueprint.neo4j.model.Notebook;
+import no.ssb.dapla.blueprint.neo4j.model.Repository;
+import no.ssb.dapla.blueprint.neo4j.model.Revision;
 import org.neo4j.driver.Record;
 import org.neo4j.driver.*;
 import org.neo4j.driver.types.Node;

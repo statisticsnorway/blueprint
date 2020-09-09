@@ -1,10 +1,10 @@
 package no.ssb.dapla.blueprint.parser;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import no.ssb.dapla.blueprint.NotebookStore;
-import no.ssb.dapla.blueprint.notebook.Notebook;
-import no.ssb.dapla.blueprint.notebook.Repository;
-import no.ssb.dapla.blueprint.notebook.Revision;
+import no.ssb.dapla.blueprint.neo4j.NotebookStore;
+import no.ssb.dapla.blueprint.neo4j.model.Notebook;
+import no.ssb.dapla.blueprint.neo4j.model.Repository;
+import no.ssb.dapla.blueprint.neo4j.model.Revision;
 import org.neo4j.driver.AuthTokens;
 import org.neo4j.driver.GraphDatabase;
 import picocli.CommandLine;

@@ -13,8 +13,11 @@ import io.helidon.webserver.StaticContentSupport;
 import io.helidon.webserver.WebServer;
 import io.helidon.webserver.WebTracingConfig;
 import io.helidon.webserver.accesslog.AccessLogSupport;
-import no.ssb.dapla.blueprint.git.GitHookService;
 import no.ssb.dapla.blueprint.health.Neo4jHealthCheck;
+import no.ssb.dapla.blueprint.neo4j.GitStore;
+import no.ssb.dapla.blueprint.neo4j.NotebookStore;
+import no.ssb.dapla.blueprint.rest.BlueprintService;
+import no.ssb.dapla.blueprint.rest.GitHookService;
 import org.neo4j.driver.AuthTokens;
 import org.neo4j.driver.Driver;
 import org.neo4j.driver.GraphDatabase;
@@ -47,7 +50,7 @@ public class BlueprintApplication {
 
     private final Map<Class<?>, Object> instanceByType = new ConcurrentHashMap<>();
 
-    BlueprintApplication(Config config) throws NoSuchAlgorithmException {
+    public BlueprintApplication(Config config) throws NoSuchAlgorithmException {
         put(Config.class, config);
 
         Driver driver = initNeo4jDriver(config.get("neo4j"));

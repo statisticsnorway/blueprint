@@ -1,4 +1,4 @@
-package no.ssb.dapla.blueprint;
+package no.ssb.dapla.blueprint.test;
 
 
 import io.helidon.config.Config;

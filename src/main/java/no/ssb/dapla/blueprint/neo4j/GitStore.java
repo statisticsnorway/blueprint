@@ -1,4 +1,4 @@
-package no.ssb.dapla.blueprint;
+package no.ssb.dapla.blueprint.neo4j;
 
 import io.helidon.config.Config;
 import org.eclipse.jgit.api.CloneCommand;
@@ -19,7 +19,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
-import static no.ssb.dapla.blueprint.notebook.Repository.computeHash;
+import static no.ssb.dapla.blueprint.neo4j.model.Repository.computeHash;
 
 /**
  * Stores and cache repositories.

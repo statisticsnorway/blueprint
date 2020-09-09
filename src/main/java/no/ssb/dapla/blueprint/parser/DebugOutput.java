@@ -1,6 +1,6 @@
 package no.ssb.dapla.blueprint.parser;
 
-import no.ssb.dapla.blueprint.notebook.Notebook;
+import no.ssb.dapla.blueprint.neo4j.model.Notebook;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

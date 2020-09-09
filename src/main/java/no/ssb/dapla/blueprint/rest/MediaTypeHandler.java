@@ -1,4 +1,4 @@
-package no.ssb.dapla.blueprint;
+package no.ssb.dapla.blueprint.rest;
 
 import io.helidon.common.http.Http;
 import io.helidon.common.http.MediaType;

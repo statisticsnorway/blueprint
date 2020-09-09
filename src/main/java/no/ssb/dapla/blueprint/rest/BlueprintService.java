@@ -1,4 +1,4 @@
-package no.ssb.dapla.blueprint;
+package no.ssb.dapla.blueprint.rest;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.helidon.common.http.Http;
@@ -8,9 +8,10 @@ import io.helidon.webserver.Routing;
 import io.helidon.webserver.ServerRequest;
 import io.helidon.webserver.ServerResponse;
 import io.helidon.webserver.Service;
-import no.ssb.dapla.blueprint.notebook.Notebook;
-import no.ssb.dapla.blueprint.notebook.Repository;
-import no.ssb.dapla.blueprint.notebook.Revision;
+import no.ssb.dapla.blueprint.neo4j.NotebookStore;
+import no.ssb.dapla.blueprint.neo4j.model.Notebook;
+import no.ssb.dapla.blueprint.neo4j.model.Repository;
+import no.ssb.dapla.blueprint.neo4j.model.Revision;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,7 +45,7 @@ public class BlueprintService implements Service {
 
     private final NotebookStore store;
 
-    BlueprintService(Config config, NotebookStore store) {
+    public BlueprintService(Config config, NotebookStore store) {
         this.store = Objects.requireNonNull(store);
     }
 

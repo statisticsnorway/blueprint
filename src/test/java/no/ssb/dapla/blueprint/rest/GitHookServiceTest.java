@@ -1,13 +1,13 @@
-package no.ssb.dapla.blueprint.git;
+package no.ssb.dapla.blueprint.rest;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.helidon.config.Config;
-import no.ssb.dapla.blueprint.EmbeddedNeo4jExtension;
-import no.ssb.dapla.blueprint.GitStore;
-import no.ssb.dapla.blueprint.NotebookStore;
-import no.ssb.dapla.blueprint.notebook.Notebook;
+import no.ssb.dapla.blueprint.neo4j.GitStore;
+import no.ssb.dapla.blueprint.neo4j.NotebookStore;
+import no.ssb.dapla.blueprint.neo4j.model.Notebook;
+import no.ssb.dapla.blueprint.test.EmbeddedNeo4jExtension;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.internal.storage.file.FileRepository;

@@ -1,7 +1,7 @@
 package no.ssb.dapla.blueprint.parser;
 
-import no.ssb.dapla.blueprint.NotebookStore;
-import no.ssb.dapla.blueprint.notebook.Notebook;
+import no.ssb.dapla.blueprint.neo4j.NotebookStore;
+import no.ssb.dapla.blueprint.neo4j.model.Notebook;
 
 import java.util.Objects;
 

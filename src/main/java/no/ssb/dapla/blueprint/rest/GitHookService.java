@@ -1,4 +1,4 @@
-package no.ssb.dapla.blueprint.git;
+package no.ssb.dapla.blueprint.rest;
 
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -6,10 +6,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.helidon.common.http.Http;
 import io.helidon.config.Config;
 import io.helidon.webserver.*;
-import no.ssb.dapla.blueprint.GitStore;
-import no.ssb.dapla.blueprint.NotebookStore;
-import no.ssb.dapla.blueprint.notebook.Repository;
-import no.ssb.dapla.blueprint.notebook.Revision;
+import no.ssb.dapla.blueprint.neo4j.GitStore;
+import no.ssb.dapla.blueprint.neo4j.NotebookStore;
+import no.ssb.dapla.blueprint.neo4j.model.Repository;
+import no.ssb.dapla.blueprint.neo4j.model.Revision;
 import no.ssb.dapla.blueprint.parser.GitNotebookProcessor;
 import no.ssb.dapla.blueprint.parser.Neo4jOutput;
 import no.ssb.dapla.blueprint.parser.NotebookFileVisitor;

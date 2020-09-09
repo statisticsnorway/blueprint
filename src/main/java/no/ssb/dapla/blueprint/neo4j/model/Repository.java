@@ -1,4 +1,4 @@
-package no.ssb.dapla.blueprint.notebook;
+package no.ssb.dapla.blueprint.neo4j.model;
 
 import org.eclipse.jgit.util.Hex;
 

@@ -1,4 +1,4 @@
-package no.ssb.dapla.blueprint.git;
+package no.ssb.dapla.blueprint.rest;
 
 import io.helidon.webserver.ServerRequest;
 import org.slf4j.Logger;

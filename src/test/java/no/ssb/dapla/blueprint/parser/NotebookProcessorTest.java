@@ -1,7 +1,7 @@
 package no.ssb.dapla.blueprint.parser;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import no.ssb.dapla.blueprint.notebook.Notebook;
+import no.ssb.dapla.blueprint.neo4j.model.Notebook;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;

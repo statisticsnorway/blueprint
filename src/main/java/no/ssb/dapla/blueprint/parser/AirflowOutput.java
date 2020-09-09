@@ -5,8 +5,8 @@ import freemarker.template.Configuration;
 import freemarker.template.Template;
 import freemarker.template.TemplateException;
 import freemarker.template.TemplateExceptionHandler;
-import no.ssb.dapla.blueprint.notebook.Dependency;
-import no.ssb.dapla.blueprint.notebook.Notebook;
+import no.ssb.dapla.blueprint.neo4j.model.Dependency;
+import no.ssb.dapla.blueprint.neo4j.model.Notebook;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

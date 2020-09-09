@@ -24,5 +24,5 @@ module no.ssb.blueprint {
     opens no.ssb.dapla.blueprint.parser to info.picocli;
 
     exports no.ssb.dapla.blueprint;
-    exports no.ssb.dapla.blueprint.notebook;
+    exports no.ssb.dapla.blueprint.neo4j;
 }

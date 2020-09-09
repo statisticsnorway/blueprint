@@ -1,4 +1,4 @@
-package no.ssb.dapla.blueprint;
+package no.ssb.dapla.blueprint.rest;
 
 import io.helidon.common.http.Http;
 import io.helidon.common.http.MediaType;
@@ -6,6 +6,8 @@ import io.helidon.config.Config;
 import io.helidon.webclient.WebClient;
 import io.helidon.webclient.WebClientResponse;
 import io.helidon.webserver.WebServer;
+import no.ssb.dapla.blueprint.BlueprintApplication;
+import no.ssb.dapla.blueprint.test.HelidonConfigExtension;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
