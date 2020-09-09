@@ -3,11 +3,11 @@ package no.ssb.dapla.blueprint.rest;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.helidon.common.http.Http;
 import io.helidon.common.http.MediaType;
-import io.helidon.config.Config;
 import io.helidon.webserver.Routing;
 import io.helidon.webserver.ServerRequest;
 import io.helidon.webserver.ServerResponse;
 import io.helidon.webserver.Service;
+import no.ssb.dapla.blueprint.neo4j.GitStore;
 import no.ssb.dapla.blueprint.neo4j.NotebookStore;
 import no.ssb.dapla.blueprint.neo4j.model.Notebook;
 import no.ssb.dapla.blueprint.neo4j.model.Repository;
@@ -43,10 +43,12 @@ public class BlueprintService implements Service {
     private static final ObjectMapper mapper = new ObjectMapper();
 
 
-    private final NotebookStore store;
+    private final NotebookStore notebookStore;
+    private final GitStore gitStore;
 
-    public BlueprintService(Config config, NotebookStore store) {
-        this.store = Objects.requireNonNull(store);
+    public BlueprintService(NotebookStore notebookStore, GitStore gitStore) {
+        this.notebookStore = Objects.requireNonNull(notebookStore);
+        this.gitStore = Objects.requireNonNull(gitStore);
     }
 
     private static String getRevisionId(ServerRequest request) {
@@ -55,6 +57,10 @@ public class BlueprintService implements Service {
 
     private static String getNotebookId(ServerRequest request) {
         return Objects.requireNonNull(request.path().param("notebookID"));
+    }
+
+    private static String getRepositoryId(ServerRequest request) {
+        return Objects.requireNonNull(request.path().param("repoID"));
     }
 
     private void getRepositoriesHandler(ServerRequest request, ServerResponse response) {
@@ -83,12 +89,12 @@ public class BlueprintService implements Service {
                         .accept(this::getRevisionsHandler, APPLICATION_REVISION_JSON, APPLICATION_JSON)
                         .orFail()
                 )
-                .get("/revisions/{revID}/notebooks", MediaTypeHandler.create()
+                .get("/repository/{repoID}/revisions/{revID}/notebooks", MediaTypeHandler.create()
                         .accept(this::getNotebooksHandler, APPLICATION_NOTEBOOK_JSON, APPLICATION_JSON)
                         .accept(this::getNotebooksDAGHandler, APPLICATION_DAG_JSON)
                         .orFail()
                 )
-                .get("/revisions/{revID}/notebooks/{notebookID}", MediaTypeHandler.create()
+                .get("/repository/{repoID}/revisions/{revID}/notebooks/{notebookID}", MediaTypeHandler.create()
                         .accept(this::getNotebookContentHandler, APPLICATION_JUPYTER_JSON)
                         .accept(this::getNotebookHandler, APPLICATION_NOTEBOOK_JSON, APPLICATION_JSON)
                         .orFail()
@@ -102,27 +108,35 @@ public class BlueprintService implements Service {
     }
 
     private void getNotebookContentHandler(ServerRequest request, ServerResponse response) {
+        var repositoryId = getRepositoryId(request);
         var revisionId = getRevisionId(request);
-        var notebooks = store.getNotebooks(revisionId);
-        // TODO: Get content from blobID.
+        var notebookId = getNotebookId(request);
+
+        var notebooks = notebookStore.getNotebook(revisionId, notebookId);
+        try {
+            byte[] content = gitStore.getBlob(repositoryId, notebooks.getBlobId());
+            response.send(content);
+        } catch (Exception e) {
+            response.send(e);
+        }
     }
 
     private void getNotebooksHandler(ServerRequest request, ServerResponse response) {
         var revisionId = getRevisionId(request);
-        var notebooks = store.getNotebooks(revisionId);
+        var notebooks = notebookStore.getNotebooks(revisionId);
         response.status(Http.Status.OK_200).send(notebooks);
     }
 
     private void getNotebooksDAGHandler(ServerRequest request, ServerResponse response) {
         var revisionId = getRevisionId(request);
-        var dependencies = store.getDependencies(revisionId);
+        var dependencies = notebookStore.getDependencies(revisionId);
         response.status(Http.Status.OK_200).send(dependencies);
     }
 
     private void getNotebookHandler(ServerRequest request, ServerResponse response) {
         var revisionId = getRevisionId(request);
         var notebookId = getNotebookId(request);
-        Notebook notebook = store.getNotebook(revisionId, notebookId);
+        Notebook notebook = notebookStore.getNotebook(revisionId, notebookId);
         response.status(Http.Status.OK_200).send(notebook);
     }
 

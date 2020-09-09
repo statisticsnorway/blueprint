@@ -1,5 +1,6 @@
 package no.ssb.dapla.blueprint.rest;
 
+import io.helidon.config.Config;
 import io.helidon.webserver.ServerRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,9 +24,14 @@ public class GithubHookVerifier {
     private final SecretKeySpec signingKey;
     private final Mac mac;
 
-    public GithubHookVerifier(String secret) throws NoSuchAlgorithmException {
+    // package private for tests.
+    GithubHookVerifier(String secret) throws NoSuchAlgorithmException {
         this.mac = Mac.getInstance(HMAC_SHA1);
         signingKey = new SecretKeySpec(Objects.requireNonNull(secret).getBytes(), HMAC_SHA1);
+    }
+
+    public GithubHookVerifier(Config config) throws NoSuchAlgorithmException {
+        this(config.get("github.secret").asString().get());
     }
 
     private Mac getThreadSafeMac() {

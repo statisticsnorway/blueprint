@@ -6,6 +6,7 @@ import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.GitCommand;
 import org.eclipse.jgit.api.TransportCommand;
 import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
@@ -101,4 +102,8 @@ public class GitStore {
         }
     }
 
+    public byte[] getBlob(String repositoryId, String blobId) throws IOException {
+        Repository repository = hashRepoMap.get(repositoryId);
+        return repository.getObjectDatabase().open(ObjectId.fromString(blobId)).getBytes();
+    }
 }

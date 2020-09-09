@@ -4,7 +4,6 @@ package no.ssb.dapla.blueprint.rest;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.helidon.common.http.Http;
-import io.helidon.config.Config;
 import io.helidon.webserver.*;
 import no.ssb.dapla.blueprint.neo4j.GitStore;
 import no.ssb.dapla.blueprint.neo4j.NotebookStore;
@@ -40,18 +39,16 @@ public class GithubHookService implements Service {
     private static final Http.ResponseStatus TOO_MANY_REQUESTS = Http.ResponseStatus.create(429, "Too Many Requests");
     private static final String HOOK_PATH = "/githubhook";
     private static final int GITHOOK_TIMEOUT = 10;
-    private final Config config;
     private final GithubHookVerifier verifier;
     private final ExecutorService parserExecutor;
     private final ObjectMapper mapper = new ObjectMapper();
     private final NotebookStore notebookStore;
     private final GitStore gitStore;
 
-    public GithubHookService(Config config, NotebookStore notebookStore, GitStore gitStore) throws NoSuchAlgorithmException {
+    public GithubHookService(NotebookStore notebookStore, GitStore gitStore, GithubHookVerifier verifier) throws NoSuchAlgorithmException {
         this.notebookStore = Objects.requireNonNull(notebookStore);
-        this.config = Objects.requireNonNull(config);
         this.gitStore = Objects.requireNonNull(gitStore);
-        this.verifier = new GithubHookVerifier(config.get("github.secret").asString().get());
+        this.verifier = Objects.requireNonNull(verifier);
         this.parserExecutor = Executors.newFixedThreadPool(4);
     }
 

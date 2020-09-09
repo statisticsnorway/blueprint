@@ -42,10 +42,11 @@ paths:
               schema:
                 $ref: '#/components/schemas/Revisions'
 
-  /revisions/{revID}/notebooks:
+  /repository/{repoID}/revisions/{revID}/notebooks:
     summary: List the notebooks for a revision.
     get:
       parameters:
+        - $ref: '#/components/parameters/repositoryID'
         - $ref: '#/components/parameters/revisionID'
         - name: diff
           description: Use the diff to filter out the notebooks that did not change with the revision.
@@ -69,17 +70,18 @@ paths:
               schema:
                 $ref: '#/components/schemas/Notebooks'
 
-  /revisions/{revID}/notebooks/{notebookID}:
+  /repository/{repoID}/revisions/{revID}/notebooks/{notebookID}:
     summary: Get a notebook.
     get:
       parameters:
-        - $ref: '#/components/parameters/notebookID'
+        - $ref: '#/components/parameters/repositoryID'
         - $ref: '#/components/parameters/revisionID'
+        - $ref: '#/components/parameters/notebookID'
       responses:
         '200':
           description: The notebook. Note that one can ask for the actual content of the file with the content type.
           content:
-            application/vnd.jupyter:
+            application/x-ipynb+json:
               schema:
                 type: object
             application/vnd.ssb.blueprint.notebook+json:
@@ -89,42 +91,46 @@ paths:
               schema:
                 $ref: '#/components/schemas/Notebook'
 
-  /revisions/{revID}/notebooks/{notebookID}/inputs:
+  /repository/{repoID}/revisions/{revID}/notebooks/{notebookID}/inputs:
     summary: Get a notebook.
     get:
       parameters:
-        - $ref: '#/components/parameters/notebookID'
+        - $ref: '#/components/parameters/repositoryID'
         - $ref: '#/components/parameters/revisionID'
+        - $ref: '#/components/parameters/notebookID'
       responses:
         '200':
           description: The input datasets
 
-  /revisions/{revID}/notebooks/{notebookID}/outputs:
+  /repository/{repoID}/revisions/{revID}/notebooks/{notebookID}/outputs:
     summary: Get a notebook.
     get:
       parameters:
-        - $ref: '#/components/parameters/notebookID'
+        - $ref: '#/components/parameters/repositoryID'
         - $ref: '#/components/parameters/revisionID'
+        - $ref: '#/components/parameters/notebookID'
       responses:
         '200':
           description: The output datasets
 
-  /revisions/{revID}/notebooks/{notebookID}/previous:
+  /repository/{repoID}/revisions/{revID}/notebooks/{notebookID}/previous:
     summary: List the notebooks this notebook depends on.
     get:
       parameters:
-        - $ref: '#/components/parameters/notebookID'
+        - $ref: '#/components/parameters/repositoryID'
         - $ref: '#/components/parameters/revisionID'
+        - $ref: '#/components/parameters/notebookID'
       responses:
         '200':
           description: The output datasets
 
-  /revisions/{revID}/notebooks/{notebookID}/next:
+  /repository/{repoID}/revisions/{revID}/notebooks/{notebookID}/next:
     summary: List the notebooks that depend on this notebook.
     get:
       parameters:
-        - $ref: '#/components/parameters/notebookID'
+        - $ref: '#/components/parameters/repositoryID'
         - $ref: '#/components/parameters/revisionID'
+        - $ref: '#/components/parameters/notebookID'
       responses:
         '200':
           description: The output datasets

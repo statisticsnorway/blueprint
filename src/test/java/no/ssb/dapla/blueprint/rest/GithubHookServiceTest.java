@@ -44,7 +44,7 @@ class GithubHookServiceTest {
 
         driver.session().writeTransaction(tx -> tx.run("MATCH (n) DETACH DELETE n"));
 
-        handler = new GithubHookService(config, new NotebookStore(driver), new GitStore(config));
+        handler = new GithubHookService(new NotebookStore(driver), new GitStore(config), new GithubHookVerifier(config));
 
         // set up local and fake remote Git repo
         tmpDirList.add(Files.createTempDirectory(null));
