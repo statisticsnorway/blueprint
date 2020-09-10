@@ -4,11 +4,15 @@ import no.ssb.dapla.blueprint.neo4j.model.Dependency;
 import no.ssb.dapla.blueprint.neo4j.model.Notebook;
 import no.ssb.dapla.blueprint.neo4j.model.Repository;
 import no.ssb.dapla.blueprint.neo4j.model.Revision;
+import no.ssb.dapla.blueprint.neo4j.ogmtest.Test;
 import org.neo4j.driver.Record;
 import org.neo4j.driver.*;
 import org.neo4j.driver.types.Node;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
@@ -51,31 +55,37 @@ public class NotebookStore {
         this.driver = Objects.requireNonNull(driver);
     }
 
+
     public void addNotebook(Notebook notebook) {
 
-        Revision revision = notebook.getRevision();
-        Repository repository = revision.getRepository();
+        Test test = new Test();
+        test.addNotebookWithOgm(notebook);
 
-        try (Session session = driver.session()) {
-            session.writeTransaction(tx -> {
-                var parameters = new HashMap<String, Object>();
-                parameters.put("repositoryId", repository.getId());
-                parameters.put("repositoryURI", repository.getUri().toASCIIString());
+        return;
 
-                parameters.put("commitId", revision.getId());
-
-                // Note the to string here. Path implement Iterable<Iterable<Path>> so neo4j fails with
-                // StackOverflowError.
-                parameters.put("fileName", notebook.getFileName().toString());
-                parameters.put("path", notebook.getPath().toString());
-
-                parameters.put("changed", notebook.isChanged());
-                parameters.put("inputs", notebook.getInputs());
-                parameters.put("outputs", notebook.getOutputs());
-                parameters.put("blobId", notebook.getBlobId());
-                return tx.run(INSERT_NOTEBOOK.withParameters(parameters));
-            });
-        }
+//        Revision revision = notebook.getRevision();
+//        Repository repository = revision.getRepository();
+//
+//        try (Session session = driver.session()) {
+//            session.writeTransaction(tx -> {
+//                var parameters = new HashMap<String, Object>();
+//                parameters.put("repositoryId", repository.getId());
+//                parameters.put("repositoryURI", repository.getUri().toASCIIString());
+//
+//                parameters.put("commitId", revision.getId());
+//
+//                // Note the to string here. Path implement Iterable<Iterable<Path>> so neo4j fails with
+//                // StackOverflowError.
+//                parameters.put("fileName", notebook.getFileName().toString());
+//                parameters.put("path", notebook.getPath().toString());
+//
+//                parameters.put("changed", notebook.isChanged());
+//                parameters.put("inputs", notebook.getInputs());
+//                parameters.put("outputs", notebook.getOutputs());
+//                parameters.put("blobId", notebook.getBlobId());
+//                return tx.run(INSERT_NOTEBOOK.withParameters(parameters));
+//            });
+//        }
     }
 
     public List<Notebook> getNotebooks() {

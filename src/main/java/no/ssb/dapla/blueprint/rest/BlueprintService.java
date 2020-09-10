@@ -37,7 +37,6 @@ public class BlueprintService implements Service {
     static final MediaType APPLICATION_DAG_JSON = MediaType.create(
             "application", "vnd.ssb.blueprint.dag+json");
 
-
     private static final Logger LOG = LoggerFactory.getLogger(BlueprintService.class);
 
     private static final ObjectMapper mapper = new ObjectMapper();

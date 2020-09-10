@@ -7,10 +7,15 @@
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
         <withJansi>true</withJansi>
         <encoder>
-            <pattern>%highlight(%d{HH:mm:ss.SSS}) %highlight([%thread]) %highlight(%-5level) %highlight(%logger{50}) %highlight(- %msg%n)
+            <pattern>%highlight(%d{HH:mm:ss.SSS}) %highlight([%thread]) %highlight(%-5level) %highlight(%logger{50})
+                %highlight(- %msg%n)
             </pattern>
         </encoder>
     </appender>
+
+    <logger name="org.neo4j.ogm.drivers.bolt.request.BoltRequest" level="info" additivity="false">
+        <appender-ref ref="STDOUT"/>
+    </logger>
 
     <logger name="no.ssb.dapla.blueprint" level="trace" additivity="false">
         <appender-ref ref="STDOUT"/>

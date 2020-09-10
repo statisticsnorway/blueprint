@@ -36,8 +36,21 @@
         <dependency>
             <groupId>org.neo4j.driver</groupId>
             <artifactId>neo4j-java-driver</artifactId>
-            <version>4.0.1</version>
+            <version>4.0.2</version>
         </dependency>
+        <dependency>
+            <groupId>org.neo4j</groupId>
+            <artifactId>neo4j-ogm-core</artifactId>
+            <version>3.2.15</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.neo4j</groupId>
+            <artifactId>neo4j-ogm-bolt-driver</artifactId>
+            <version>3.2.15</version>
+            <scope>runtime</scope>
+        </dependency>
+
         <dependency>
             <groupId>no.ssb.jpms</groupId>
             <artifactId>jsr305-and-javax.annotation-api</artifactId>
