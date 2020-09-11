@@ -2,6 +2,7 @@ package no.ssb.dapla.blueprint.parser;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import no.ssb.dapla.blueprint.neo4j.model.Dataset;
 import no.ssb.dapla.blueprint.neo4j.model.Notebook;
 
 import java.io.IOException;
@@ -49,7 +50,7 @@ public class NotebookProcessor {
             throw new IOException("source was not an array");
         }
 
-        Set<String> set = null;
+        Set<Dataset> set = null;
         for (JsonNode line : source) {
             String textLine = line.asText().trim();
             // Ignore regular code.
@@ -72,7 +73,7 @@ public class NotebookProcessor {
             }
 
             if (set != null) {
-                set.add(textLine.trim());
+                set.add(new Dataset(textLine.trim()));
             }
         }
     }

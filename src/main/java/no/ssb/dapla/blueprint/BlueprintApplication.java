@@ -13,15 +13,14 @@ import io.helidon.webserver.StaticContentSupport;
 import io.helidon.webserver.WebServer;
 import io.helidon.webserver.WebTracingConfig;
 import io.helidon.webserver.accesslog.AccessLogSupport;
-import no.ssb.dapla.blueprint.health.Neo4jHealthCheck;
 import no.ssb.dapla.blueprint.neo4j.GitStore;
 import no.ssb.dapla.blueprint.neo4j.NotebookStore;
+import no.ssb.dapla.blueprint.neo4j.model.Commit;
 import no.ssb.dapla.blueprint.rest.BlueprintService;
 import no.ssb.dapla.blueprint.rest.GithubHookService;
 import no.ssb.dapla.blueprint.rest.GithubHookVerifier;
-import org.neo4j.driver.AuthTokens;
-import org.neo4j.driver.Driver;
-import org.neo4j.driver.GraphDatabase;
+import org.neo4j.ogm.config.Configuration;
+import org.neo4j.ogm.session.SessionFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.bridge.SLF4JBridgeHandler;
@@ -54,12 +53,12 @@ public class BlueprintApplication {
     public BlueprintApplication(Config config) throws NoSuchAlgorithmException {
         put(Config.class, config);
 
-        Driver driver = initNeo4jDriver(config.get("neo4j"));
-        put(Driver.class, driver);
+        SessionFactory driver = initNeo4jDriver(config.get("neo4j"));
+        put(SessionFactory.class, driver);
 
         HealthSupport health = HealthSupport.builder()
                 .addLiveness(HealthChecks.healthChecks())
-                .addLiveness(new Neo4jHealthCheck(driver))
+                //.addLiveness(new Neo4jHealthCheck(driver))
                 .build();
         MetricsSupport metrics = MetricsSupport.create();
 
@@ -135,12 +134,21 @@ public class BlueprintApplication {
                 });
     }
 
-    public static Driver initNeo4jDriver(Config config) {
-        String host = config.get("host").asString().get();
-        int port = config.get("port").asInt().get();
+    public static SessionFactory initNeo4jDriver(Config config) {
+
+        var builder = new Configuration.Builder();
+
         String username = config.get("username").asString().get();
         String password = config.get("password").asString().get();
-        return GraphDatabase.driver("bolt://" + host + ":" + port, AuthTokens.basic(username, password));
+        builder.credentials(username, password);
+
+        String host = config.get("host").asString().get();
+        int port = config.get("port").asInt().get();
+        builder.uri("bolt://" + host + ":" + port);
+
+        builder.connectionPoolSize(config.get("poolSize").asInt().orElse(10));
+
+        return new SessionFactory(builder.build(), Commit.class.getPackageName());
     }
 
     public <T> T put(Class<T> clazz, T instance) {

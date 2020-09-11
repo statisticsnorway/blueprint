@@ -9,9 +9,9 @@ import io.helidon.webserver.ServerResponse;
 import io.helidon.webserver.Service;
 import no.ssb.dapla.blueprint.neo4j.GitStore;
 import no.ssb.dapla.blueprint.neo4j.NotebookStore;
+import no.ssb.dapla.blueprint.neo4j.model.Commit;
 import no.ssb.dapla.blueprint.neo4j.model.Notebook;
 import no.ssb.dapla.blueprint.neo4j.model.Repository;
-import no.ssb.dapla.blueprint.neo4j.model.Revision;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -71,8 +71,8 @@ public class BlueprintService implements Service {
 
     private void getRevisionsHandler(ServerRequest request, ServerResponse response) {
         response.status(Http.Status.OK_200).send(List.of(
-                new Revision("foo"),
-                new Revision("bar")
+                new Commit("foo"),
+                new Commit("bar")
         ));
     }
 

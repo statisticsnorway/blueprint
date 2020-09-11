@@ -1,29 +1,30 @@
-package no.ssb.dapla.blueprint.neo4j.ogmtest;
+package no.ssb.dapla.blueprint.neo4j.model;
 
 import org.neo4j.ogm.annotation.Id;
 import org.neo4j.ogm.annotation.NodeEntity;
 import org.neo4j.ogm.annotation.Relationship;
 
 import java.time.Instant;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 
 @NodeEntity
 public class Commit {
 
     @Id
     private String id;
+
     private String author;
+
     private Instant createdAt;
 
     @Relationship(type = "CONTAINS", direction = Relationship.INCOMING)
     private Repository repository;
 
     @Relationship(type = "CREATES")
-    private Set<Notebook> creates;
+    private final Set<Notebook> creates = new HashSet<>();
 
     @Relationship(type = "UPDATES")
-    private Set<Notebook> updates;
+    private final Set<Notebook> updates = new HashSet<>();
 
     private Commit() {
     }
@@ -38,6 +39,7 @@ public class Commit {
 
     public void setRepository(Repository repository) {
         this.repository = repository;
+        repository.addCommit(this);
     }
 
     public String getId() {
@@ -48,16 +50,24 @@ public class Commit {
         return creates;
     }
 
-    public void setCreates(Set<Notebook> creates) {
-        this.creates = creates;
+    public void addCreate(Collection<Notebook> notebooks) {
+        this.creates.addAll(notebooks);
+    }
+
+    public void addCreate(Notebook... notebooks) {
+        addCreate(Arrays.asList(notebooks));
+    }
+
+    public void addUpdate(Collection<Notebook> notebooks) {
+        this.updates.addAll(notebooks);
+    }
+
+    public void addUpdate(Notebook... notebooks) {
+        addUpdate(Arrays.asList(notebooks));
     }
 
     public Set<Notebook> getUpdates() {
         return updates;
-    }
-
-    public void setUpdates(Set<Notebook> updates) {
-        this.updates = updates;
     }
 
     public String getAuthor() {

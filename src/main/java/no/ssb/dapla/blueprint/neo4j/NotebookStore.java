@@ -1,153 +1,52 @@
 package no.ssb.dapla.blueprint.neo4j;
 
+import no.ssb.dapla.blueprint.neo4j.model.Commit;
 import no.ssb.dapla.blueprint.neo4j.model.Dependency;
 import no.ssb.dapla.blueprint.neo4j.model.Notebook;
-import no.ssb.dapla.blueprint.neo4j.model.Repository;
-import no.ssb.dapla.blueprint.neo4j.model.Revision;
-import no.ssb.dapla.blueprint.neo4j.ogmtest.Test;
-import org.neo4j.driver.Record;
-import org.neo4j.driver.*;
-import org.neo4j.driver.types.Node;
+import org.neo4j.ogm.session.Session;
+import org.neo4j.ogm.session.SessionFactory;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 /**
  * TODO: Evaluate https://neo4j-contrib.github.io/cypher-dsl
  */
 public class NotebookStore {
 
-    private static final Query INSERT_NOTEBOOK = new Query("""
-            MERGE (repo:Repository {
-                repositoryId: $repositoryId,
-                repositoryURI: $repositoryURI
-            })
-                        
-            MERGE (repo)-[:CONTAINS]->(rev:GitRevision {
-                commitId: $commitId
-            })
-                        
-            MERGE (rev)-[:MODIFIES]->(nb:Notebook {
-                blobId: $blobId,
-                fileName: $fileName,
-                path: $path,
-                changed: $changed                
-            })
-                        
-            WITH nb
-            UNWIND $inputs as input 
-                MERGE (ds:Dataset {path: input, commitId:$commitId})
-                MERGE (nb)-[:CONSUMES]->(ds)
+    private final Session session;
 
-            WITH nb
-            UNWIND $outputs as output
-              MERGE (ds:Dataset {path: output, commitId:$commitId})
-              MERGE (nb)-[:PRODUCES]->(ds)
-                                            
-            """);
-
-    private final Driver driver;
-
-    public NotebookStore(Driver driver) {
-        this.driver = Objects.requireNonNull(driver);
+    public NotebookStore(SessionFactory factory) {
+        this.session = Objects.requireNonNull(factory).openSession();
     }
 
+    public NotebookStore(Session session) {
+        this.session = Objects.requireNonNull(session);
+    }
 
     public void addNotebook(Notebook notebook) {
-
-        Test test = new Test();
-        test.addNotebookWithOgm(notebook);
-
-        return;
-
-//        Revision revision = notebook.getRevision();
-//        Repository repository = revision.getRepository();
-//
-//        try (Session session = driver.session()) {
-//            session.writeTransaction(tx -> {
-//                var parameters = new HashMap<String, Object>();
-//                parameters.put("repositoryId", repository.getId());
-//                parameters.put("repositoryURI", repository.getUri().toASCIIString());
-//
-//                parameters.put("commitId", revision.getId());
-//
-//                // Note the to string here. Path implement Iterable<Iterable<Path>> so neo4j fails with
-//                // StackOverflowError.
-//                parameters.put("fileName", notebook.getFileName().toString());
-//                parameters.put("path", notebook.getPath().toString());
-//
-//                parameters.put("changed", notebook.isChanged());
-//                parameters.put("inputs", notebook.getInputs());
-//                parameters.put("outputs", notebook.getOutputs());
-//                parameters.put("blobId", notebook.getBlobId());
-//                return tx.run(INSERT_NOTEBOOK.withParameters(parameters));
-//            });
-//        }
+        session.save(notebook);
     }
 
     public List<Notebook> getNotebooks() {
-        return getNotebooks(null, null);
+        return new ArrayList<>(session.loadAll(Notebook.class));
     }
 
     public List<Notebook> getNotebooks(String revisionId) {
-        return getNotebooks(revisionId, null);
+        return getNotebooks(revisionId, false);
     }
 
     public List<Notebook> getNotebooks(String revisionId, Boolean diff) {
-        try (Session session = driver.session()) {
-            return session.readTransaction(tx -> {
-                var parameters = Values.parameters(
-                        "commitId", revisionId,
-                        "diff", diff
-                );
-                Result result = tx.run("""
-                        MATCH (repo:Repository)-[:CONTAINS]->(rev:GitRevision)
-                        MATCH (rev)-[:MODIFIES]->(nb:Notebook)-[t:CONSUMES|PRODUCES]->(ds:Dataset)
-                        WHERE $commitId is null or rev.commitId = $commitId and $diff is null or nb.changed = $diff
-                        RETURN repo, rev, nb, t, ds
-                        """, parameters);
-                Map<Node, List<Record>> map = result.stream().collect(
-                        Collectors.groupingBy(record -> record.get("nb").asNode()));
-
-                ArrayList<Notebook> nbResult = new ArrayList<>();
-                for (Node node : map.keySet()) {
-
-                    var notebook = nodeToNotebook(node);
-
-                    Repository repository = map.get(node).stream().map(record -> record.get("repo").asNode())
-                            .findFirst()
-                            .map(repo -> new Repository(
-                                    repo.get("repositoryURI").asString()
-                            )).orElseThrow();
-
-                    Revision revision = map.get(node).stream().map(record -> record.get("rev").asNode())
-                            .findFirst()
-                            .map(repo -> new Revision(
-                                    repo.get("commitId").asString()
-                            )).orElseThrow();
-
-                    revision.setRepository(repository);
-                    notebook.setRevision(revision);
-
-                    notebook.setOutputs(map.get(node).stream()
-                            .filter(record -> record.get("t").asRelationship().hasType("PRODUCES"))
-                            .map(record -> record.get("ds").asNode().get("path").asString())
-                            .collect(Collectors.toSet())
-                    );
-
-                    notebook.setInputs(map.get(node).stream()
-                            .filter(record -> record.get("t").asRelationship().hasType("CONSUMES"))
-                            .map(record -> record.get("ds").asNode().get("path").asString())
-                            .collect(Collectors.toSet())
-                    );
-
-                    nbResult.add(notebook);
-                }
-                return nbResult;
-            });
+        var commit = session.load(Commit.class, revisionId);
+        if (diff) {
+            return new ArrayList<>(commit.getUpdates());
+        } else {
+            var updatesAndCreate = new ArrayList<Notebook>();
+            updatesAndCreate.addAll(commit.getUpdates());
+            updatesAndCreate.addAll(commit.getCreates());
+            return updatesAndCreate;
         }
     }
 
@@ -156,30 +55,8 @@ public class NotebookStore {
     }
 
     public Notebook getNotebook(String revisionId, String blobId) {
-        try (Session session = driver.session()) {
-            var parameters = Values.parameters(
-                    "commitId", revisionId,
-                    "blobId", blobId
-            );
-            var optionalRecord = session.readTransaction(tx -> {
-                Result result = tx.run("""
-                        MATCH (rev:GitRevision)-[:MODIFIES]->(nb:Notebook)
-                        WHERE rev.commitId = $commitId and nb.blobId = $blobId
-                        RETURN nb
-                        """, parameters);
-                return result.stream().findFirst();
-            });
-
-            return optionalRecord.map(record -> record.get("nb").asNode())
-                    .map(this::nodeToNotebook).orElse(null);
-        }
-    }
-
-    private Notebook nodeToNotebook(Node node) {
-        Notebook notebook = new Notebook();
-        notebook.setPath(node.get("path").asString());
-        notebook.setChanged(node.get("changed").asBoolean());
-        notebook.setBlobId(node.get("blobId").asString());
-        return notebook;
+        return session.queryForObject(Notebook.class, """
+                TODO: TODO
+                """, Map.of("commitId", revisionId, "blobId", blobId));
     }
 }

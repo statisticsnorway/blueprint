@@ -1,15 +1,15 @@
 package no.ssb.dapla.blueprint.neo4j;
 
 import no.ssb.dapla.blueprint.neo4j.model.Notebook;
-import no.ssb.dapla.blueprint.neo4j.model.Repository;
-import no.ssb.dapla.blueprint.neo4j.model.Revision;
 import no.ssb.dapla.blueprint.test.EmbeddedNeo4jExtension;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.neo4j.driver.Driver;
+import org.neo4j.ogm.session.SessionFactory;
 
 import java.util.Set;
+
+import static no.ssb.dapla.blueprint.parser.ParserTest.createNotebook;
 
 @ExtendWith(EmbeddedNeo4jExtension.class)
 class NotebookStoreTest {
@@ -38,25 +38,8 @@ class NotebookStoreTest {
     private NotebookStore store;
 
     @BeforeEach
-    void setUp(Driver driver) {
-        store = new NotebookStore(driver);
-    }
-
-    private Notebook createNotebook(String repositoryUri, String commitId, String blobId, String path,
-                                    Set<String> inputs, Set<String> outputs) {
-
-        var repository = new Repository(repositoryUri);
-        var revision = new Revision(commitId);
-        var notebook = new Notebook();
-        notebook.setRevision(revision);
-        revision.setRepository(repository);
-
-        notebook.setBlobId(blobId);
-        notebook.setPath(path);
-        notebook.setInputs(inputs);
-        notebook.setOutputs(outputs);
-
-        return notebook;
+    void setUp(SessionFactory factory) {
+        store = new NotebookStore(factory);
     }
 
     @Test

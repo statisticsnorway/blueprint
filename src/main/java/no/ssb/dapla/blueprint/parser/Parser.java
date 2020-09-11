@@ -1,10 +1,9 @@
 package no.ssb.dapla.blueprint.parser;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import no.ssb.dapla.blueprint.neo4j.NotebookStore;
+import no.ssb.dapla.blueprint.neo4j.model.Commit;
 import no.ssb.dapla.blueprint.neo4j.model.Notebook;
 import no.ssb.dapla.blueprint.neo4j.model.Repository;
-import no.ssb.dapla.blueprint.neo4j.model.Revision;
 import org.neo4j.driver.AuthTokens;
 import org.neo4j.driver.GraphDatabase;
 import picocli.CommandLine;
@@ -50,18 +49,21 @@ public final class Parser {
         }
 
         var driver = GraphDatabase.driver(options.host, auth);
-        var output = new Neo4jOutput(new NotebookStore(driver));
+
+
+        //var output = new Neo4jOutput(new NotebookStore(driver));
+        var output = new DebugOutput();
         var visitor = new NotebookFileVisitor(new HashSet<>(options.ignores));
 
         Parser parser = new Parser(visitor, output);
 
-        var revision = new Revision(options.commitId);
+        var revision = new Commit(options.commitId);
         revision.setRepository(new Repository(options.repositoryURL));
         parser.parse(options.root.toPath(), revision);
 
     }
 
-    public void parse(Path path, Revision revision) throws IOException {
+    public void parse(Path path, Commit commit) throws IOException {
         Files.walkFileTree(path, visitor);
         for (Path notebookPath : visitor.getNotebooks()) {
 
@@ -69,7 +71,11 @@ public final class Parser {
             var relNotebookPath = path.relativize(notebookPath);
 
             Notebook nb = processor.process(path, relNotebookPath);
-            nb.setRevision(revision);
+            if (nb.isChanged()) {
+                nb.setUpdateCommit(commit);
+            } else {
+                nb.setCreateCommit(commit);
+            }
             output.output(nb);
         }
     }

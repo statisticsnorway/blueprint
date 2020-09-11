@@ -6,22 +6,28 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.helidon.config.Config;
 import no.ssb.dapla.blueprint.neo4j.GitStore;
 import no.ssb.dapla.blueprint.neo4j.NotebookStore;
+import no.ssb.dapla.blueprint.neo4j.model.Commit;
 import no.ssb.dapla.blueprint.neo4j.model.Notebook;
-import no.ssb.dapla.blueprint.test.EmbeddedNeo4jExtension;
+import no.ssb.dapla.blueprint.test.HelidonConfigExtension;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.internal.storage.file.FileRepository;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.neo4j.driver.Driver;
+import org.neo4j.ogm.config.Configuration;
+import org.neo4j.ogm.session.Session;
+import org.neo4j.ogm.session.SessionFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -29,22 +35,24 @@ import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@ExtendWith(EmbeddedNeo4jExtension.class)
+//@ExtendWith(EmbeddedNeo4jExtension.class)
+@ExtendWith(HelidonConfigExtension.class)
 class GithubHookServiceTest {
 
     private static final String REMOTE_REPO_BASE_NAME = "remoteRepo_";
     private static final String NOTEBOOK_NAME = "notebook-with-metadata";
     private static final String NOTEBOOK_FILE_EXTENSION = ".ipynb";
-    private List<Path> tmpDirList = new ArrayList<>();
 
-    private GithubHookService handler;
+    private static NotebookStore store;
+    private static GithubHookService handler;
+    private static Session session;
 
+    private final List<Path> tmpDirList = new ArrayList<>();
 
-    Git createRemoteRepo(Config config, Driver driver, int repoCounter) throws Exception {
-
-        driver.session().writeTransaction(tx -> tx.run("MATCH (n) DETACH DELETE n"));
-
-        handler = new GithubHookService(new NotebookStore(driver), new GitStore(config), new GithubHookVerifier(config));
+    /**
+     * Create a remote repository with the content of "/notebooks/foo"
+     */
+    Git createRemoteRepo(int repoCounter) throws Exception {
 
         // set up local and fake remote Git repo
         tmpDirList.add(Files.createTempDirectory(null));
@@ -60,6 +68,26 @@ class GithubHookServiceTest {
         remoteRepo.create();
 
         return new Git(remoteRepo);
+    }
+
+    @BeforeEach
+    void setUp() {
+//        session.purgeDatabase();
+    }
+
+    //    static void beforeAll(Config config, SessionFactory sessionFactory) throws NoSuchAlgorithmException {
+    @BeforeAll
+    static void beforeAll(Config config) throws NoSuchAlgorithmException {
+        var sessionFactory = new SessionFactory(
+                new Configuration.Builder()
+                        .uri("bolt://0.0.0.0:7687")
+                        .credentials("neo4j", "password")
+                        .build(),
+                Commit.class.getPackageName()
+        );
+        session = sessionFactory.openSession();
+        store = new NotebookStore(session);
+        handler = new GithubHookService(store, new GitStore(config), new GithubHookVerifier(config));
     }
 
     @AfterEach
@@ -84,15 +112,14 @@ class GithubHookServiceTest {
     }
 
     @Test
-    void testHook(Config config, Driver driver) throws Exception {
+    void testHook() throws Exception {
         int repoCounter = 0;
-        Git remoteRepo = createRemoteRepo(config, driver, repoCounter);
+        Git remoteRepo = createRemoteRepo(repoCounter);
         JsonNode payloadInitialCommit = commitToRemote("Initial commit", remoteRepo, repoCounter);
         String firstCommitId = payloadInitialCommit.get("head_commit").get("id").textValue();
         handler.checkoutAndParse(payloadInitialCommit);
-        NotebookStore notebookStore = new NotebookStore(driver);
-        List<Notebook> notebooks = notebookStore.getNotebooks();
-        assertThat(notebooks.size()).isEqualTo(2);
+        List<Notebook> notebooks = store.getNotebooks(firstCommitId);
+        assertThat(notebooks.size()).isEqualTo(4);
 
         // Test new commit
         createNewFileInRepo(resolveRepoDir(remoteRepo.getRepository().getDirectory().getPath(), repoCounter), repoCounter);
@@ -100,7 +127,7 @@ class GithubHookServiceTest {
         handler.checkoutAndParse(secondPayload);
         String secondCommitId = secondPayload.get("head_commit").get("id").textValue();
         assertThat(secondCommitId).isNotEqualTo(firstCommitId);
-        notebooks = notebookStore.getNotebooks();
+        notebooks = store.getNotebooks(secondCommitId);
 
         // Two from first commit and three from second
         assertThat(notebooks.size()).isEqualTo(5);
@@ -109,16 +136,16 @@ class GithubHookServiceTest {
         JsonNode deletePayload = deleteFileFromRemote("Delete file", NOTEBOOK_NAME + NOTEBOOK_FILE_EXTENSION, remoteRepo, repoCounter);
         handler.checkoutAndParse(deletePayload);
         assertThat(deletePayload.get("head_commit").get("id").textValue()).isNotEqualTo(secondCommitId);
-        notebooks = notebookStore.getNotebooks();
+        notebooks = store.getNotebooks();
 
         // Two from first commit, three from second and two from third
         assertThat(notebooks.size()).isEqualTo(7);
     }
 
     @Test
-    void testNotLatestCommit(Config config, Driver driver) throws Exception {
+    void testNotLatestCommit() throws Exception {
         int repoNumber = 0;
-        Git remoteRepo = createRemoteRepo(config, driver, repoNumber);
+        Git remoteRepo = createRemoteRepo(repoNumber);
         JsonNode payloadInitialCommit = commitToRemote("Initial commit", remoteRepo, repoNumber);
         String firstCommitId = payloadInitialCommit.get("head_commit").get("id").textValue();
 
@@ -128,15 +155,14 @@ class GithubHookServiceTest {
         assertThat(firstCommitId).isNotEqualTo(secondPayload.get("after").textValue());
 
         handler.checkoutAndParse(payloadInitialCommit);
-        NotebookStore notebookStore = new NotebookStore(driver);
-        List<Notebook> notebooks = notebookStore.getNotebooks();
-        assertThat(notebooks.size()).isEqualTo(2);
+        List<Notebook> notebooks = store.getNotebooks(firstCommitId);
+        assertThat(notebooks.size()).isEqualTo(4);
     }
 
     @Test
-    void testAsyncSameRepo(Config config, Driver driver) throws Exception {
+    void testAsyncSameRepo() throws Exception {
         int repoCounter = 0;
-        Git remoteRepo = createRemoteRepo(config, driver, repoCounter);
+        Git remoteRepo = createRemoteRepo(repoCounter);
 
         // Do initial commit of files
         commitToRemote("Initial commit", remoteRepo, repoCounter);
@@ -167,14 +193,13 @@ class GithubHookServiceTest {
 
         callingThreadBlocker.countDown();
         completedThreadCounter.await();
-        NotebookStore notebookStore = new NotebookStore(driver);
-        List<Notebook> notebooks = notebookStore.getNotebooks();
+        List<Notebook> notebooks = store.getNotebooks();
 
         assertThat(notebooks.size()).isEqualTo(expectedNumberOfNotebooks);
     }
 
     @Test
-    void testAsyncMultipleRepos(Config config, Driver driver) throws Exception {
+    void testAsyncMultipleRepos() throws Exception {
         int numberOfThreads = 5;
         CountDownLatch readyThreadCounter = new CountDownLatch(numberOfThreads);
         CountDownLatch callingThreadBlocker = new CountDownLatch(1);
@@ -183,7 +208,7 @@ class GithubHookServiceTest {
         // Create repos, commits and payloads
         var payloads = new ArrayList<JsonNode>();
         for (int i = 0; i < numberOfThreads; i++) {
-            Git remoteRepo = createRemoteRepo(config, driver, i);
+            Git remoteRepo = createRemoteRepo(i);
             createNewFileInRepo(resolveRepoDir(remoteRepo.getRepository().getDirectory().getPath(), i), i);
             payloads.add(commitToRemote("Commit number " + 0, remoteRepo, i));
         }
@@ -200,12 +225,14 @@ class GithubHookServiceTest {
 
         callingThreadBlocker.countDown();
         completedThreadCounter.await();
-        NotebookStore notebookStore = new NotebookStore(driver);
-        List<Notebook> notebooks = notebookStore.getNotebooks();
+        List<Notebook> notebooks = store.getNotebooks();
 
         assertThat(notebooks.size()).isEqualTo(expectedNumberOfNotebooks);
     }
 
+    /**
+     * Duplicate one notebook in the repo.
+     */
     private void createNewFileInRepo(String repoDir, int counter) throws IOException {
         Path destinationPath = Paths.get(repoDir);
         Path sourceFile = Paths.get(String.join(File.separator, destinationPath.toString(), NOTEBOOK_NAME + NOTEBOOK_FILE_EXTENSION));
@@ -277,7 +304,7 @@ class GithubHookServiceTest {
         return String.join(File.separator, tmpDirList.get(repoCounter).toString(), dirs[dirs.length - 2]); // Get the second to last element
     }
 
-    class GitHookWorker implements Runnable {
+    static class GitHookWorker implements Runnable {
         private final CountDownLatch readyThreadCounter;
         private final CountDownLatch callingThreadBlocker;
         private final CountDownLatch completedThreadCounter;

@@ -36,6 +36,7 @@ public class GitNotebookProcessor extends NotebookProcessor {
         this.git = Objects.requireNonNull(git);
     }
 
+
     @Override
     public Notebook process(Path path, Path notebookPath) throws IOException {
         var diffEntries = getDiffMap();

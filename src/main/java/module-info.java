@@ -28,8 +28,10 @@ module no.ssb.blueprint {
     requires org.neo4j.ogm.core;
     requires org.neo4j.ogm.drivers.api;
     requires io.github.classgraph;
-    opens no.ssb.dapla.blueprint.neo4j.ogmtest to org.neo4j.ogm.core;
+    opens no.ssb.dapla.blueprint.neo4j.model to org.neo4j.ogm.core;
+    opens no.ssb.dapla.blueprint.neo4j.converters to org.neo4j.ogm.core;
 
     exports no.ssb.dapla.blueprint;
     exports no.ssb.dapla.blueprint.neo4j;
+    exports no.ssb.dapla.blueprint.neo4j.model;
 }

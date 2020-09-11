@@ -1,38 +1,40 @@
 package no.ssb.dapla.blueprint.neo4j.model;
 
-import org.eclipse.jgit.util.Hex;
+import org.neo4j.ogm.annotation.Id;
+import org.neo4j.ogm.annotation.NodeEntity;
+import org.neo4j.ogm.annotation.Relationship;
 
 import java.net.URI;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
+import java.util.HashSet;
+import java.util.Objects;
+import java.util.Set;
 
+@NodeEntity
 public class Repository {
 
-    private final URI uri;
+    @Id
+    private String uri;
 
-    public Repository(String uri) {
-        this.uri = URI.create(uri);
+    @Relationship(type = "CONTAINS")
+    final Set<Commit> commits = new HashSet<>();
+
+    private Repository() {
     }
 
     public Repository(URI uri) {
-        this.uri = uri;
+        this.uri = uri.normalize().toASCIIString();
     }
 
-    public static String computeHash(URI remote) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-1");
-            var hash = digest.digest(remote.normalize().toASCIIString().getBytes());
-            return Hex.toHexString(hash);
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalArgumentException(e);
-        }
+    public Repository(String uri) {
+        this.uri = Objects.requireNonNull(uri);
     }
 
-    public URI getUri() {
+    public void addCommit(Commit commit) {
+        commits.add(commit);
+    }
+
+    public String getUri() {
         return uri;
     }
 
-    public String getId() {
-        return computeHash(getUri());
-    }
 }

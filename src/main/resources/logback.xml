@@ -13,7 +13,7 @@
         </encoder>
     </appender>
 
-    <logger name="org.neo4j.ogm.drivers.bolt.request.BoltRequest" level="info" additivity="false">
+    <logger name="org.neo4j.ogm.drivers.bolt.request.BoltRequest" level="debug" additivity="false">
         <appender-ref ref="STDOUT"/>
     </logger>
 
