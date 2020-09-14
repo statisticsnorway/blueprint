@@ -1,10 +1,7 @@
 package no.ssb.dapla.blueprint.neo4j.model;
 
 import no.ssb.dapla.blueprint.neo4j.converters.PathStringConverter;
-import org.neo4j.ogm.annotation.Id;
-import org.neo4j.ogm.annotation.NodeEntity;
-import org.neo4j.ogm.annotation.Relationship;
-import org.neo4j.ogm.annotation.Transient;
+import org.neo4j.ogm.annotation.*;
 import org.neo4j.ogm.annotation.typeconversion.Convert;
 
 import java.nio.file.Path;
@@ -14,6 +11,9 @@ import java.util.*;
 public class Notebook {
 
     @Id
+    @GeneratedValue
+    private Long id;
+
     private String blobId;
 
     @Convert(PathStringConverter.class)
@@ -27,6 +27,7 @@ public class Notebook {
 
     @Relationship(type = "PRODUCES")
     private Set<Dataset> outputs = new HashSet<>();
+
     @Relationship(type = "CONSUMES")
     private Set<Dataset> inputs = new HashSet<>();
 
