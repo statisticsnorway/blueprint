@@ -1,5 +1,6 @@
 package no.ssb.dapla.blueprint.neo4j.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.neo4j.ogm.annotation.Id;
 import org.neo4j.ogm.annotation.NodeEntity;
 import org.neo4j.ogm.annotation.Relationship;
@@ -33,6 +34,7 @@ public class Commit {
         this.id = Objects.requireNonNull(id);
     }
 
+    @JsonIgnore
     public Repository getRepository() {
         return repository;
     }
@@ -46,6 +48,7 @@ public class Commit {
         return id;
     }
 
+    @JsonIgnore
     public Set<Notebook> getCreates() {
         return creates;
     }
@@ -66,6 +69,7 @@ public class Commit {
         addUpdate(Arrays.asList(notebooks));
     }
 
+    @JsonIgnore
     public Set<Notebook> getUpdates() {
         return updates;
     }

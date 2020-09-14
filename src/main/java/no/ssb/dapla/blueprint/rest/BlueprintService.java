@@ -1,6 +1,5 @@
 package no.ssb.dapla.blueprint.rest;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.helidon.common.http.Http;
 import io.helidon.common.http.MediaType;
 import io.helidon.webserver.Routing;
@@ -11,12 +10,10 @@ import no.ssb.dapla.blueprint.neo4j.GitStore;
 import no.ssb.dapla.blueprint.neo4j.NotebookStore;
 import no.ssb.dapla.blueprint.neo4j.model.Commit;
 import no.ssb.dapla.blueprint.neo4j.model.Notebook;
-import no.ssb.dapla.blueprint.neo4j.model.Repository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.util.List;
+import java.util.Collection;
 import java.util.Objects;
+import java.util.Optional;
 
 import static io.helidon.common.http.MediaType.APPLICATION_JSON;
 
@@ -36,11 +33,6 @@ public class BlueprintService implements Service {
 
     static final MediaType APPLICATION_DAG_JSON = MediaType.create(
             "application", "vnd.ssb.blueprint.dag+json");
-
-    private static final Logger LOG = LoggerFactory.getLogger(BlueprintService.class);
-
-    private static final ObjectMapper mapper = new ObjectMapper();
-
 
     private final NotebookStore notebookStore;
     private final GitStore gitStore;
@@ -63,17 +55,18 @@ public class BlueprintService implements Service {
     }
 
     private void getRepositoriesHandler(ServerRequest request, ServerResponse response) {
-        response.status(Http.Status.OK_200).send(List.of(
-                new Repository("foo"),
-                new Repository("bar")
-        ));
+        var repositories = notebookStore.getRepositories();
+        response.status(Http.Status.OK_200).send(repositories);
     }
 
     private void getRevisionsHandler(ServerRequest request, ServerResponse response) {
-        response.status(Http.Status.OK_200).send(List.of(
-                new Commit("foo"),
-                new Commit("bar")
-        ));
+        var revisionId = getRevisionId(request);
+        Optional<Collection<Commit>> commits = notebookStore.getCommits(revisionId);
+        if (commits.isEmpty()) {
+            response.status(Http.Status.NOT_FOUND_404).send();
+        } else {
+            response.status(Http.Status.OK_200).send(commits.get());
+        }
     }
 
     @Override

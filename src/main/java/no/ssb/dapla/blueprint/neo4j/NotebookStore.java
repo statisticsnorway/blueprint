@@ -3,13 +3,11 @@ package no.ssb.dapla.blueprint.neo4j;
 import no.ssb.dapla.blueprint.neo4j.model.Commit;
 import no.ssb.dapla.blueprint.neo4j.model.Dependency;
 import no.ssb.dapla.blueprint.neo4j.model.Notebook;
+import no.ssb.dapla.blueprint.neo4j.model.Repository;
 import org.neo4j.ogm.session.Session;
 import org.neo4j.ogm.session.SessionFactory;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 /**
  * TODO: Evaluate https://neo4j-contrib.github.io/cypher-dsl
@@ -58,5 +56,14 @@ public class NotebookStore {
         return session.queryForObject(Notebook.class, """
                 TODO: TODO
                 """, Map.of("commitId", revisionId, "blobId", blobId));
+    }
+
+    public Collection<Repository> getRepositories() {
+        return session.loadAll(Repository.class, 0);
+    }
+
+    public Optional<Collection<Commit>> getCommits(String repositoryId) {
+        var repository = session.load(Repository.class, repositoryId);
+        return Optional.ofNullable(repository).map(Repository::getCommits);
     }
 }

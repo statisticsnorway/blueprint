@@ -1,5 +1,6 @@
 package no.ssb.dapla.blueprint.neo4j.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.neo4j.ogm.annotation.Id;
 import org.neo4j.ogm.annotation.NodeEntity;
 import org.neo4j.ogm.annotation.Relationship;
@@ -14,6 +15,11 @@ public class Repository {
 
     @Id
     private String uri;
+
+    @JsonIgnore
+    public Set<Commit> getCommits() {
+        return commits;
+    }
 
     @Relationship(type = "CONTAINS")
     final Set<Commit> commits = new HashSet<>();
