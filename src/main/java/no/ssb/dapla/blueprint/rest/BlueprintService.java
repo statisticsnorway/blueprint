@@ -42,16 +42,16 @@ public class BlueprintService implements Service {
         this.gitStore = Objects.requireNonNull(gitStore);
     }
 
-    private static String getRevisionId(ServerRequest request) {
-        return Objects.requireNonNull(request.path().param("revID"));
+    private static String parseCommitId(ServerRequest request) {
+        return Objects.requireNonNull(request.path().param("commitId"));
     }
 
-    private static String getNotebookId(ServerRequest request) {
-        return Objects.requireNonNull(request.path().param("notebookID"));
+    private static String parseNotebookId(ServerRequest request) {
+        return Objects.requireNonNull(request.path().param("notebookId"));
     }
 
-    private static String getRepositoryId(ServerRequest request) {
-        return Objects.requireNonNull(request.path().param("repoID"));
+    private static String parseRepositoryId(ServerRequest request) {
+        return Objects.requireNonNull(request.path().param("repoId"));
     }
 
     private void getRepositoriesHandler(ServerRequest request, ServerResponse response) {
@@ -60,7 +60,7 @@ public class BlueprintService implements Service {
     }
 
     private void getRevisionsHandler(ServerRequest request, ServerResponse response) {
-        var revisionId = getRepositoryId(request);
+        var revisionId = parseRepositoryId(request);
         Optional<Collection<Commit>> commits = notebookStore.getCommits(revisionId);
         if (commits.isEmpty()) {
             response.status(Http.Status.NOT_FOUND_404).send();
@@ -72,37 +72,31 @@ public class BlueprintService implements Service {
     @Override
     public void update(Routing.Rules rules) {
         rules
-                .get("/repository", MediaTypeHandler.create()
+                .get("/repositories", MediaTypeHandler.create()
                         .accept(this::getRepositoriesHandler, APPLICATION_REPOSITORY_JSON, APPLICATION_JSON)
                         .orFail()
                 )
 
-                .get("/repository/{repoID}/revisions", MediaTypeHandler.create()
+                .get("/repositories/{repoID}/commits", MediaTypeHandler.create()
                         .accept(this::getRevisionsHandler, APPLICATION_REVISION_JSON, APPLICATION_JSON)
                         .orFail()
                 )
-                .get("/repository/{repoID}/revisions/{revID}/notebooks", MediaTypeHandler.create()
+                .get("/repositories/{repoID}/commits/{revID}/notebooks", MediaTypeHandler.create()
                         .accept(this::getNotebooksHandler, APPLICATION_NOTEBOOK_JSON, APPLICATION_JSON)
                         .accept(this::getNotebooksDAGHandler, APPLICATION_DAG_JSON)
                         .orFail()
                 )
-                .get("/repository/{repoID}/revisions/{revID}/notebooks/{notebookID}", MediaTypeHandler.create()
+                .get("/repositories/{repoID}/commits/{revID}/notebooks/{notebookID}", MediaTypeHandler.create()
                         .accept(this::getNotebookContentHandler, APPLICATION_JUPYTER_JSON)
                         .accept(this::getNotebookHandler, APPLICATION_NOTEBOOK_JSON, APPLICATION_JSON)
                         .orFail()
-                )
-
-                // TODO: Those are maybe not that useful.
-                .get("/revisions/{revID}/notebooks/{notebookID}/inputs", this::getNotebookInputsHandler)
-                .get("/revisions/{revID}/notebooks/{notebookID}/outputs", this::getNotebookOutputsHandler)
-                .get("/revisions/{revID}/notebooks/{notebookID}/previous", this::getPreviousNotebooksHandler)
-                .get("/revisions/{revID}/notebooks/{notebookID}/next", this::getNextNotebooksHandler);
+                );
     }
 
     private void getNotebookContentHandler(ServerRequest request, ServerResponse response) {
-        var repositoryId = getRepositoryId(request);
-        var revisionId = getRevisionId(request);
-        var notebookId = getNotebookId(request);
+        var repositoryId = parseRepositoryId(request);
+        var revisionId = parseCommitId(request);
+        var notebookId = parseNotebookId(request);
 
         var notebooks = notebookStore.getNotebook(revisionId, notebookId);
         try {
@@ -114,37 +108,21 @@ public class BlueprintService implements Service {
     }
 
     private void getNotebooksHandler(ServerRequest request, ServerResponse response) {
-        var revisionId = getRevisionId(request);
+        var revisionId = parseCommitId(request);
         var notebooks = notebookStore.getNotebooks(revisionId);
         response.status(Http.Status.OK_200).send(notebooks);
     }
 
     private void getNotebooksDAGHandler(ServerRequest request, ServerResponse response) {
-        var revisionId = getRevisionId(request);
+        var revisionId = parseCommitId(request);
         var dependencies = notebookStore.getDependencies(revisionId);
         response.status(Http.Status.OK_200).send(dependencies);
     }
 
     private void getNotebookHandler(ServerRequest request, ServerResponse response) {
-        var revisionId = getRevisionId(request);
-        var notebookId = getNotebookId(request);
+        var revisionId = parseCommitId(request);
+        var notebookId = parseNotebookId(request);
         Notebook notebook = notebookStore.getNotebook(revisionId, notebookId);
         response.status(Http.Status.OK_200).send(notebook);
-    }
-
-    private void getNotebookOutputsHandler(ServerRequest request, ServerResponse response) {
-        request.next(new UnsupportedOperationException("TODO"));
-    }
-
-    private void getNotebookInputsHandler(ServerRequest request, ServerResponse response) {
-        request.next(new UnsupportedOperationException("TODO"));
-    }
-
-    private void getNextNotebooksHandler(ServerRequest request, ServerResponse response) {
-        request.next(new UnsupportedOperationException("TODO"));
-    }
-
-    private void getPreviousNotebooksHandler(ServerRequest request, ServerResponse response) {
-        request.next(new UnsupportedOperationException("TODO"));
     }
 }

@@ -6,12 +6,12 @@ info:
     headless execution.
   version: 0.0.1
 servers:
-  - url: 'http://api.example.com/v1'
-    description: Production server
-  - url: 'https://blueprint.staging-bip-app.ssb.no/api/v1'
-    description: Staging server for testing
   - url: 'http://localhost:10170/api/v1'
     description: Local server
+  - url: 'https://blueprint.staging-bip-app.ssb.no/api/v1'
+    description: Staging server for testing
+  - url: 'http://api.example.com/v1'
+    description: Production server
 paths:
   /repository:
     get:
@@ -26,28 +26,28 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Repositories'
-  /repository/{repoID}/revisions:
-    summary: List the revisions for a repository
+  /repositories/{repoID}/commits:
+    summary: List the commits for a repository
     get:
       parameters:
-        - $ref: '#/components/parameters/repositoryID'
+        - $ref: '#/components/parameters/repositoryId'
       responses:
         '200':
-          description: The list of revisions
+          description: The list of commits
           content:
             application/vnd.ssb.blueprint.revision+json:
               schema:
-                $ref: '#/components/schemas/Revisions'
+                $ref: '#/components/schemas/Commits'
             application/json:
               schema:
-                $ref: '#/components/schemas/Revisions'
+                $ref: '#/components/schemas/Commits'
 
-  /repository/{repoID}/revisions/{revID}/notebooks:
+  /repositories/{repoID}/commits/{commitId}/notebooks:
     summary: List the notebooks for a revision.
     get:
       parameters:
-        - $ref: '#/components/parameters/repositoryID'
-        - $ref: '#/components/parameters/revisionID'
+        - $ref: '#/components/parameters/repositoryId'
+        - $ref: '#/components/parameters/commitId'
         - name: diff
           description: Use the diff to filter out the notebooks that did not change with the revision.
           in: query
@@ -70,13 +70,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/Notebooks'
 
-  /repository/{repoID}/revisions/{revID}/notebooks/{notebookID}:
+  /repositories/{repoID}/commits/{commitId}/notebooks/{notebookId}:
     summary: Get a notebook.
     get:
       parameters:
-        - $ref: '#/components/parameters/repositoryID'
-        - $ref: '#/components/parameters/revisionID'
-        - $ref: '#/components/parameters/notebookID'
+        - $ref: '#/components/parameters/repositoryId'
+        - $ref: '#/components/parameters/commitId'
+        - $ref: '#/components/parameters/notebookId'
       responses:
         '200':
           description: The notebook. Note that one can ask for the actual content of the file with the content type.
@@ -91,70 +91,70 @@ paths:
               schema:
                 $ref: '#/components/schemas/Notebook'
 
-  /repository/{repoID}/revisions/{revID}/notebooks/{notebookID}/inputs:
+  /repositories/{repoID}/commits/{commitId}/notebooks/{notebookId}/inputs:
     summary: Get a notebook.
     get:
       parameters:
-        - $ref: '#/components/parameters/repositoryID'
-        - $ref: '#/components/parameters/revisionID'
-        - $ref: '#/components/parameters/notebookID'
+        - $ref: '#/components/parameters/repositoryId'
+        - $ref: '#/components/parameters/commitId'
+        - $ref: '#/components/parameters/notebookId'
       responses:
         '200':
           description: The input datasets
 
-  /repository/{repoID}/revisions/{revID}/notebooks/{notebookID}/outputs:
+  /repositories/{repoID}/commits/{commitId}/notebooks/{notebookId}/outputs:
     summary: Get a notebook.
     get:
       parameters:
-        - $ref: '#/components/parameters/repositoryID'
-        - $ref: '#/components/parameters/revisionID'
-        - $ref: '#/components/parameters/notebookID'
+        - $ref: '#/components/parameters/repositoryId'
+        - $ref: '#/components/parameters/commitId'
+        - $ref: '#/components/parameters/notebookId'
       responses:
         '200':
           description: The output datasets
 
-  /repository/{repoID}/revisions/{revID}/notebooks/{notebookID}/previous:
+  /repositories/{repoID}/commits/{commitId}/notebooks/{notebookId}/previous:
     summary: List the notebooks this notebook depends on.
     get:
       parameters:
-        - $ref: '#/components/parameters/repositoryID'
-        - $ref: '#/components/parameters/revisionID'
-        - $ref: '#/components/parameters/notebookID'
+        - $ref: '#/components/parameters/repositoryId'
+        - $ref: '#/components/parameters/commitId'
+        - $ref: '#/components/parameters/notebookId'
       responses:
         '200':
           description: The output datasets
 
-  /repository/{repoID}/revisions/{revID}/notebooks/{notebookID}/next:
+  /repositories/{repoID}/commits/{commitId}/notebooks/{notebookId}/next:
     summary: List the notebooks that depend on this notebook.
     get:
       parameters:
-        - $ref: '#/components/parameters/repositoryID'
-        - $ref: '#/components/parameters/revisionID'
-        - $ref: '#/components/parameters/notebookID'
+        - $ref: '#/components/parameters/repositoryId'
+        - $ref: '#/components/parameters/commitId'
+        - $ref: '#/components/parameters/notebookId'
       responses:
         '200':
           description: The output datasets
 
 components:
   parameters:
-    repositoryID:
+    repositoryId:
       name: repoID
       in: path
-      description: User ID
+      description: Repository identifier
       required: true
       schema:
         type: string
-    notebookID:
-      name: notebookID
+    notebookId:
+      name: notebookId
       in: path
       description: Notebook identifier
       required: true
       schema:
         type: string
-    revisionID:
-      name: revID
+    commitId:
+      name: commitId
       in: path
-      description: Revision identifier
+      description: Commit identifier
       required: true
       schema:
         type: string
@@ -182,11 +182,11 @@ components:
           $ref: '#/components/schemas/Notebook'
         consumer:
           $ref: '#/components/schemas/Notebook'
-    Revisions:
+    Commits:
       type: array
       items:
-        $ref: '#/components/schemas/Revision'
-    Revision:
+        $ref: '#/components/schemas/Commit'
+    Commit:
       type: object
       properties:
         id:
