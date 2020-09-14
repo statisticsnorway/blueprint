@@ -72,7 +72,7 @@ class GithubHookServiceTest {
 
     @BeforeEach
     void setUp() {
-//        session.purgeDatabase();
+        session.purgeDatabase();
     }
 
     //    static void beforeAll(Config config, SessionFactory sessionFactory) throws NoSuchAlgorithmException {
@@ -139,7 +139,7 @@ class GithubHookServiceTest {
         notebooks = store.getNotebooks();
 
         // Two from first commit, three from second and two from third
-        assertThat(notebooks.size()).isEqualTo(7);
+        assertThat(notebooks.size()).isEqualTo(13);
     }
 
     @Test
@@ -181,7 +181,7 @@ class GithubHookServiceTest {
 
         List<Thread> workers = new ArrayList<>();
         int expectedNumberOfNotebooks = 0;
-        int initialNumberOfNotebooks = 3;// First commit contains three notebooks
+        int initialNumberOfNotebooks = 5;// First commit contains five notebooks
         for (int i = 0; i < numberOfThreads; i++) {
             workers.add(new Thread(new GitHookWorker(
                     readyThreadCounter, callingThreadBlocker, completedThreadCounter, payloads.get(i))));
@@ -214,7 +214,7 @@ class GithubHookServiceTest {
         }
 
         List<Thread> workers = new ArrayList<>();
-        int expectedNumberOfNotebooks = numberOfThreads * 3; // Three files in each repo
+        int expectedNumberOfNotebooks = numberOfThreads * 5; // Three files in each repo
         for (int i = 0; i < numberOfThreads; i++) {
             workers.add(new Thread(new GitHookWorker(
                     readyThreadCounter, callingThreadBlocker, completedThreadCounter, payloads.get(i))));
