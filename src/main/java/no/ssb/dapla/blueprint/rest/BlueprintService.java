@@ -60,7 +60,7 @@ public class BlueprintService implements Service {
     }
 
     private void getRevisionsHandler(ServerRequest request, ServerResponse response) {
-        var revisionId = getRevisionId(request);
+        var revisionId = getRepositoryId(request);
         Optional<Collection<Commit>> commits = notebookStore.getCommits(revisionId);
         if (commits.isEmpty()) {
             response.status(Http.Status.NOT_FOUND_404).send();

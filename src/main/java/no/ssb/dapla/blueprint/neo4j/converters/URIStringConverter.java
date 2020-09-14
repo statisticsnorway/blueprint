@@ -7,7 +7,7 @@ import java.net.URI;
 public class URIStringConverter implements AttributeConverter<URI, String> {
     @Override
     public String toGraphProperty(URI uri) {
-        return uri.toASCIIString();
+        return uri.normalize().toASCIIString();
     }
 
     @Override
