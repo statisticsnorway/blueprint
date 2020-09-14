@@ -7,7 +7,7 @@ import io.helidon.webclient.WebClient;
 import io.helidon.webclient.WebClientResponse;
 import io.helidon.webserver.WebServer;
 import no.ssb.dapla.blueprint.BlueprintApplication;
-import no.ssb.dapla.blueprint.test.HelidonConfigExtension;
+import no.ssb.dapla.blueprint.HelidonConfigExtension;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;

@@ -1,7 +1,7 @@
 package no.ssb.dapla.blueprint.neo4j;
 
+import no.ssb.dapla.blueprint.EmbeddedNeo4jExtension;
 import no.ssb.dapla.blueprint.neo4j.model.Notebook;
-import no.ssb.dapla.blueprint.test.EmbeddedNeo4jExtension;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

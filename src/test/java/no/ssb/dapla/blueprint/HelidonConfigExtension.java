@@ -1,4 +1,4 @@
-package no.ssb.dapla.blueprint.test;
+package no.ssb.dapla.blueprint;
 
 import io.helidon.config.Config;
 import org.junit.jupiter.api.extension.ExtensionContext;

@@ -1,6 +1,6 @@
 package no.ssb.dapla.blueprint.rest;
 
-import no.ssb.dapla.blueprint.test.HelidonConfigExtension;
+import no.ssb.dapla.blueprint.HelidonConfigExtension;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
