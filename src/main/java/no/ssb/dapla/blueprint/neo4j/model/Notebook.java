@@ -1,7 +1,10 @@
 package no.ssb.dapla.blueprint.neo4j.model;
 
 import no.ssb.dapla.blueprint.neo4j.converters.PathStringConverter;
-import org.neo4j.ogm.annotation.*;
+import org.neo4j.ogm.annotation.Id;
+import org.neo4j.ogm.annotation.NodeEntity;
+import org.neo4j.ogm.annotation.Relationship;
+import org.neo4j.ogm.annotation.Transient;
 import org.neo4j.ogm.annotation.typeconversion.Convert;
 
 import java.nio.file.Path;
@@ -11,16 +14,13 @@ import java.util.*;
 public class Notebook {
 
     @Id
-    @GeneratedValue
-    private Long id;
-
     private String blobId;
 
     @Convert(PathStringConverter.class)
     private Path path;
 
     @Relationship(type = "CREATES", direction = Relationship.INCOMING)
-    private Commit createdIn;
+    private Set<Commit> createdIn;
 
     @Relationship(type = "UPDATES", direction = Relationship.INCOMING)
     private Set<Commit> updatedIn = new HashSet<>();
@@ -93,7 +93,7 @@ public class Notebook {
         this.path = path;
     }
 
-    public Commit getCreatedIn() {
+    public Set<Commit> getCreatedIn() {
         return createdIn;
     }
 
@@ -102,7 +102,7 @@ public class Notebook {
     }
 
     public void setCreateCommit(Commit commit) {
-        createdIn = Objects.requireNonNull(commit);
+        createdIn.add(commit);
         commit.addCreate(this);
     }
 

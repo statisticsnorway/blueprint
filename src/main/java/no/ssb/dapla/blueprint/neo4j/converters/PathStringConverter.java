@@ -8,11 +8,17 @@ public class PathStringConverter implements AttributeConverter<Path, String> {
 
     @Override
     public String toGraphProperty(Path value) {
+        if (value == null) {
+            return null;
+        }
         return value.toString();
     }
 
     @Override
     public Path toEntityAttribute(String value) {
+        if (value == null) {
+            return null;
+        }
         return Path.of(value);
     }
 }

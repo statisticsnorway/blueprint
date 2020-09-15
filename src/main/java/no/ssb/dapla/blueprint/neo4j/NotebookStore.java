@@ -66,4 +66,8 @@ public class NotebookStore {
         var repository = session.load(Repository.class, repositoryId);
         return Optional.ofNullable(repository).map(Repository::getCommits);
     }
+
+    public void saveRepository(Repository repository) {
+        session.save(repository);
+    }
 }
