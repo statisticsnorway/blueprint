@@ -117,7 +117,6 @@ class NotebookStoreTest {
                 DS_ONE,
                 DS_TWO
         );
-        notebook.setChanged(true);
         store.addNotebook(notebook);
 
         notebook = createNotebook(
@@ -128,7 +127,6 @@ class NotebookStoreTest {
                 DS_TWO,
                 DS_THREE
         );
-        notebook.setChanged(true);
         store.addNotebook(notebook);
 
 

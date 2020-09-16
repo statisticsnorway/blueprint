@@ -71,9 +71,7 @@ public class GithubHookService implements Service {
 
             var commit = new Commit(commitId);
             var repository = new Repository(repoUrl);
-            repository.addCommit(commit);
-            commit.setRepository(repository);
-            parser.parse(path, commit);
+            parser.parse(path, commit, repository);
 
         } catch (GitAPIException e) {
             LOG.error("Error connecting to remote repository", e);

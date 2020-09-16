@@ -37,6 +37,10 @@ public class GitNotebookProcessor extends NotebookProcessor {
     }
 
 
+    public DiffEntry get(String path) {
+        return diffMap.get(path);
+    }
+
     @Override
     public Notebook process(Path path, Path notebookPath) throws IOException {
         var diffEntries = getDiffMap();
@@ -46,7 +50,7 @@ public class GitNotebookProcessor extends NotebookProcessor {
 
         // Since we are only looking at all the files that exists a match always means
         // that the file was changed.
-        notebook.setChanged(diffEntries.containsKey(notebookPath.toString()));
+
         return notebook;
     }
 

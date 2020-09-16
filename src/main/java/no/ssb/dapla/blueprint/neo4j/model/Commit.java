@@ -5,27 +5,32 @@ import org.neo4j.ogm.annotation.Id;
 import org.neo4j.ogm.annotation.NodeEntity;
 import org.neo4j.ogm.annotation.Relationship;
 
+import java.nio.file.Path;
 import java.time.Instant;
-import java.util.*;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Objects;
+import java.util.Set;
 
 @NodeEntity
 public class Commit {
 
+    @Relationship(type = "CREATES")
+    private final Set<CreatedFile> creates = new HashSet<>();
+    @Relationship(type = "UPDATES")
+    private final Set<UpdatedFile> updates = new HashSet<>();
+    @Relationship(type = "DELETES")
+    private final Set<DeletedFile> deletes = new HashSet<>();
+    @Relationship(type = "UNCHANGED")
+    private final Set<UnchangedFile> unchanged = new HashSet<>();
+
     @Id
     private String id;
-
     private String author;
-
     private Instant createdAt;
 
     @Relationship(type = "CONTAINS", direction = Relationship.INCOMING)
     private Repository repository;
-
-    @Relationship(type = "CREATES")
-    private final Set<Notebook> creates = new HashSet<>();
-
-    @Relationship(type = "UPDATES")
-    private final Set<Notebook> updates = new HashSet<>();
 
     private Commit() {
     }
@@ -39,39 +44,59 @@ public class Commit {
         return repository;
     }
 
-    public void setRepository(Repository repository) {
-        this.repository = repository;
-        repository.addCommit(this);
-    }
-
     public String getId() {
         return id;
     }
 
     @JsonIgnore
-    public Set<Notebook> getCreates() {
-        return creates;
+    public Set<CreatedFile> getCreates() {
+        return Collections.unmodifiableSet(creates);
     }
 
-    public void addCreate(Collection<Notebook> notebooks) {
-        this.creates.addAll(notebooks);
+    public void addCreate(String path, Notebook notebook) {
+        addCreate(Path.of(path), notebook);
     }
 
-    public void addCreate(Notebook... notebooks) {
-        addCreate(Arrays.asList(notebooks));
-    }
-
-    public void addUpdate(Collection<Notebook> notebooks) {
-        this.updates.addAll(notebooks);
-    }
-
-    public void addUpdate(Notebook... notebooks) {
-        addUpdate(Arrays.asList(notebooks));
+    public void addCreate(Path path, Notebook notebook) {
+        this.creates.add(new CreatedFile(this, path, notebook));
     }
 
     @JsonIgnore
-    public Set<Notebook> getUpdates() {
-        return updates;
+    public Set<UpdatedFile> getUpdates() {
+        return Collections.unmodifiableSet(updates);
+    }
+
+    public void addUpdate(Path path, Notebook notebook) {
+        this.updates.add(new UpdatedFile(this, path, notebook));
+    }
+
+    public void addUpdate(String path, Notebook notebook) {
+        addUpdate(Path.of(path), notebook);
+    }
+
+    @JsonIgnore
+    public Set<DeletedFile> getDeletes() {
+        return Collections.unmodifiableSet(deletes);
+    }
+
+    public void addDelete(String path, Notebook notebook) {
+        addDelete(Path.of(path), notebook);
+    }
+
+    public void addDelete(Path path, Notebook notebook) {
+        this.deletes.add(new DeletedFile(this, path, notebook));
+    }
+
+    public Set<UnchangedFile> getUnchanged() {
+        return unchanged;
+    }
+
+    public void addUnchanged(String path, Notebook notebook) {
+        addUnchanged(Path.of(path), notebook);
+    }
+
+    public void addUnchanged(Path path, Notebook notebook) {
+        this.unchanged.add(new UnchangedFile(this, path, notebook));
     }
 
     public String getAuthor() {
@@ -89,5 +114,4 @@ public class Commit {
     public void setCreatedAt(Instant createdAt) {
         this.createdAt = createdAt;
     }
-
 }

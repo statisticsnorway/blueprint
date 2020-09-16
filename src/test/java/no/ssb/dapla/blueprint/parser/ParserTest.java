@@ -10,7 +10,6 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -22,14 +21,18 @@ public class ParserTest {
 
     public static Notebook createNotebook(String commitId, String repositoryURL, String blobId, String path, Set<String> inputs, Set<String> outputs) {
         Notebook notebook = new Notebook();
-        notebook.setPath(path);
+
+        // TODO
+        //notebook.setPath(path);
 
         inputs.stream().map(Dataset::new).forEach(dataset -> notebook.getInputs().add(dataset));
         outputs.stream().map(Dataset::new).forEach(dataset -> notebook.getOutputs().add(dataset));
 
         var commit = new Commit(commitId);
-        commit.setRepository(new Repository(repositoryURL));
-        notebook.setCreateCommit(commit);
+        // TODO commit.setRepository(new Repository(repositoryURL));
+
+        // TODO
+        //notebook.setCreateCommit(commit);
         notebook.setBlobId(blobId);
 
         return notebook;
@@ -47,8 +50,8 @@ public class ParserTest {
     void testCommit1() throws IOException {
 
         var commit = new Commit("commit1");
-        commit.setRepository(new Repository("http://github.com/test/test"));
-        parser.parse(Path.of("src/test/resources/notebooks/graph/commit1"), commit);
+        var repository = new Repository("http://github.com/test/test");
+        parser.parse(Path.of("src/test/resources/notebooks/graph/commit1"), commit, repository);
 
         Notebook familyNotebook = createNotebook(
                 "commit1",
@@ -77,7 +80,7 @@ public class ParserTest {
                 Set.of("/skatt/en", "/skatt/to", "/skatt/tre", "/skatt/fire")
         );
 
-        notebooks.sort(Comparator.comparing(Notebook::getPath));
+        // TODO notebooks.sort(Comparator.comparing(Notebook::getPath));
         assertThat(notebooks.get(0)).usingRecursiveComparison().isEqualTo(familyNotebook);
         assertThat(notebooks.get(1)).usingRecursiveComparison().isEqualTo(fregNotebook);
         assertThat(notebooks.get(2)).usingRecursiveComparison().isEqualTo(skattNotebook);
@@ -87,8 +90,8 @@ public class ParserTest {
     void testCommit2() throws IOException {
 
         var commit = new Commit("commit2");
-        commit.setRepository(new Repository("http://github.com/test/test"));
-        parser.parse(Path.of("src/test/resources/notebooks/graph/commit2"), commit);
+        var repository = new Repository("http://github.com/test/test");
+        parser.parse(Path.of("src/test/resources/notebooks/graph/commit2"), commit, repository);
 
         Notebook familyNotebook = createNotebook(
                 "commit2",
@@ -117,7 +120,7 @@ public class ParserTest {
                 Set.of("/skatt/en", "/skatt/to", "/skatt/tre", "/skatt/fire")
         );
 
-        notebooks.sort(Comparator.comparing(Notebook::getPath));
+        // TODO notebooks.sort(Comparator.comparing(Notebook::getPath));
         assertThat(notebooks.get(0)).usingRecursiveComparison().isEqualTo(familyNotebook);
         assertThat(notebooks.get(1)).usingRecursiveComparison().isEqualTo(fregNotebook);
         assertThat(notebooks.get(2)).usingRecursiveComparison().isEqualTo(skattNotebook);

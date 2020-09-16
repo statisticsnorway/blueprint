@@ -1,13 +1,12 @@
 package no.ssb.dapla.blueprint.neo4j;
 
-import no.ssb.dapla.blueprint.neo4j.model.Commit;
-import no.ssb.dapla.blueprint.neo4j.model.Dependency;
-import no.ssb.dapla.blueprint.neo4j.model.Notebook;
-import no.ssb.dapla.blueprint.neo4j.model.Repository;
+import no.ssb.dapla.blueprint.neo4j.model.*;
 import org.neo4j.ogm.session.Session;
 import org.neo4j.ogm.session.SessionFactory;
 
+import java.net.URI;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * TODO: Evaluate https://neo4j-contrib.github.io/cypher-dsl
@@ -38,14 +37,11 @@ public class NotebookStore {
 
     public List<Notebook> getNotebooks(String revisionId, Boolean diff) {
         var commit = session.load(Commit.class, revisionId);
-        if (diff) {
-            return new ArrayList<>(commit.getUpdates());
-        } else {
-            var updatesAndCreate = new ArrayList<Notebook>();
-            updatesAndCreate.addAll(commit.getUpdates());
-            updatesAndCreate.addAll(commit.getCreates());
-            return updatesAndCreate;
-        }
+        // TODO: Wrap in representation.
+        Set<CommittedFile> files = new HashSet<>();
+        files.addAll(commit.getCreates());
+        files.addAll(commit.getUpdates());
+        return files.stream().map(CommittedFile::getNotebook).collect(Collectors.toList());
     }
 
     public List<Dependency> getDependencies(String revisionId) {
@@ -67,7 +63,29 @@ public class NotebookStore {
         return Optional.ofNullable(repository).map(Repository::getCommits);
     }
 
+    public Commit findOrCreateCommit(String id) {
+        var commit = session.load(Commit.class, id, 0);
+        if (commit == null) {
+            commit = new Commit(id);
+            session.save(commit);
+        }
+        return commit;
+    }
+
+    public Repository findOrCreateRepository(String id, URI uri) {
+        var commit = session.load(Repository.class, id, 0);
+        if (commit == null) {
+            commit = new Repository(uri);
+            session.save(commit);
+        }
+        return commit;
+    }
+
     public void saveRepository(Repository repository) {
         session.save(repository);
+    }
+
+    public void saveCommit(Commit commit) {
+        session.save(commit);
     }
 }

@@ -1,11 +1,11 @@
 package no.ssb.dapla.blueprint.parser;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import no.ssb.dapla.blueprint.neo4j.NotebookStore;
 import no.ssb.dapla.blueprint.neo4j.model.Commit;
 import no.ssb.dapla.blueprint.neo4j.model.Notebook;
 import no.ssb.dapla.blueprint.neo4j.model.Repository;
 import org.neo4j.driver.AuthTokens;
-import org.neo4j.driver.GraphDatabase;
 import picocli.CommandLine;
 import picocli.CommandLine.Option;
 
@@ -48,7 +48,7 @@ public final class Parser {
             auth = AuthTokens.basic(options.user, options.password);
         }
 
-        var driver = GraphDatabase.driver(options.host, auth);
+        //var driver = GraphDatabase.driver(options.host, auth);
 
 
         //var output = new Neo4jOutput(new NotebookStore(driver));
@@ -57,13 +57,29 @@ public final class Parser {
 
         Parser parser = new Parser(visitor, output);
 
-        var revision = new Commit(options.commitId);
-        revision.setRepository(new Repository(options.repositoryURL));
-        parser.parse(options.root.toPath(), revision);
+        // TODO: Refactor.
+        var commit = new Commit(options.commitId);
+        var repository = new Repository(options.repositoryURL);
+        parser.parse(options.root.toPath(), commit, repository);
 
     }
 
-    public void parse(Path path, Commit commit) throws IOException {
+    public void parse(Path path, Commit commit, Repository repository) throws IOException {
+        // TODO: Refactor
+        NotebookStore notebookStore = null;
+        if (output instanceof Neo4jOutput) {
+            notebookStore = ((Neo4jOutput) output).getNotebookStore();
+        }
+
+        GitNotebookProcessor notebookProcessor = null;
+        if (processor instanceof GitNotebookProcessor) {
+            notebookProcessor = (GitNotebookProcessor) processor;
+        }
+
+        // We get the commit and repository since we want to add a relation.
+        var persistedRepo = notebookStore.findOrCreateRepository(repository.getId(), repository.getUri());
+        var persistedCommit = notebookStore.findOrCreateCommit(commit.getId());
+
         Files.walkFileTree(path, visitor);
         for (Path notebookPath : visitor.getNotebooks()) {
 
@@ -71,13 +87,30 @@ public final class Parser {
             var relNotebookPath = path.relativize(notebookPath);
 
             Notebook nb = processor.process(path, relNotebookPath);
-            if (nb.isChanged()) {
-                nb.setUpdateCommit(commit);
-            } else {
-                nb.setCreateCommit(commit);
-            }
             output.output(nb);
+
+            var diff = notebookProcessor.get(relNotebookPath.toString());
+            if (diff == null) {
+                persistedCommit.addUnchanged(relNotebookPath, nb);
+            } else {
+                switch (diff.getChangeType()) {
+                    case ADD -> {
+                        persistedCommit.addCreate(relNotebookPath, nb);
+                    }
+                    // TODO: Add missing cases.
+                    case MODIFY, RENAME, COPY -> {
+                        persistedCommit.addUpdate(relNotebookPath, nb);
+                    }
+                    case DELETE -> {
+                        persistedCommit.addDelete(relNotebookPath, nb);
+                    }
+                }
+            }
         }
+
+        persistedRepo.addCommit(persistedCommit);
+        notebookStore.saveRepository(persistedRepo);
+
     }
 
     public final static class Options {

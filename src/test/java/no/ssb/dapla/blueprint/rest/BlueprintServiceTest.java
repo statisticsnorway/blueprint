@@ -184,30 +184,27 @@ class BlueprintServiceTest {
         repository.addCommit(commit2);
 
         var nb1 = new Notebook("nb1");
-        nb1.setPath("foo");
         nb1.addInputs(new Dataset("/a"));
         nb1.addInputs(new Dataset("/b"));
         nb1.addOutputs(new Dataset("/c"));
         nb1.addOutputs(new Dataset("/d"));
 
         var nb2 = new Notebook("nb2");
-        nb2.setPath("foo/bar");
         nb2.addInputs(new Dataset("/c"));
         nb2.addInputs(new Dataset("/d"));
         nb2.addOutputs(new Dataset("/e"));
         nb2.addOutputs(new Dataset("/f"));
 
-        commit1.addCreate(nb1);
-        commit1.addCreate(nb2);
+        commit1.addCreate("foo", nb1);
+        commit1.addCreate("foo/bar", nb2);
 
         var nb3 = new Notebook("nb3");
-        nb3.setPath("bar/foo");
         nb2.addInputs(new Dataset("/e"));
         nb2.addInputs(new Dataset("/b"));
         nb2.addOutputs(new Dataset("/g"));
-        commit2.addCreate(nb3);
-        commit2.addUpdate(nb1);
-        commit2.addUpdate(nb2);
+        commit2.addCreate("bar/foo", nb3);
+        commit2.addUpdate("foo", nb1);
+        commit2.addUpdate("foo/bar", nb2);
 
         notebookStore.saveRepository(repository);
 

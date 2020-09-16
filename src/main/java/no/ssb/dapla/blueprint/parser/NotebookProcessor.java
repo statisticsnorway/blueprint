@@ -26,7 +26,6 @@ public class NotebookProcessor {
         JsonNode jsonNode = mapper.readTree(path.resolve(notebookPath).toFile());
 
         Notebook notebook = new Notebook();
-        notebook.setPath(notebookPath);
 
         JsonNode cells = jsonNode.get("cells");
         processCells(notebook, cells);
