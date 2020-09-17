@@ -7,8 +7,6 @@ import io.helidon.common.http.Http;
 import io.helidon.webserver.*;
 import no.ssb.dapla.blueprint.neo4j.GitStore;
 import no.ssb.dapla.blueprint.neo4j.NotebookStore;
-import no.ssb.dapla.blueprint.neo4j.model.Commit;
-import no.ssb.dapla.blueprint.neo4j.model.Repository;
 import no.ssb.dapla.blueprint.parser.GitNotebookProcessor;
 import no.ssb.dapla.blueprint.parser.Neo4jOutput;
 import no.ssb.dapla.blueprint.parser.NotebookFileVisitor;
@@ -67,11 +65,9 @@ public class GithubHookService implements Service {
             var processor = new GitNotebookProcessor(new ObjectMapper(), git);
             var visitor = new NotebookFileVisitor(Set.of(".git"));
             var output = new Neo4jOutput(notebookStore);
-            Parser parser = new Parser(visitor, output, processor);
 
-            var commit = new Commit(commitId);
-            var repository = new Repository(repoUrl);
-            parser.parse(path, commit, repository);
+            Parser parser = new Parser(visitor, output, processor);
+            parser.parse(path, commitId, URI.create(repoUrl));
 
         } catch (GitAPIException e) {
             LOG.error("Error connecting to remote repository", e);

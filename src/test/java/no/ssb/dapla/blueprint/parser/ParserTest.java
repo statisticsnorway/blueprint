@@ -3,11 +3,11 @@ package no.ssb.dapla.blueprint.parser;
 import no.ssb.dapla.blueprint.neo4j.model.Commit;
 import no.ssb.dapla.blueprint.neo4j.model.Dataset;
 import no.ssb.dapla.blueprint.neo4j.model.Notebook;
-import no.ssb.dapla.blueprint.neo4j.model.Repository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
+import java.net.URI;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Set;
@@ -49,9 +49,8 @@ public class ParserTest {
     @Test
     void testCommit1() throws IOException {
 
-        var commit = new Commit("commit1");
-        var repository = new Repository("http://github.com/test/test");
-        parser.parse(Path.of("src/test/resources/notebooks/graph/commit1"), commit, repository);
+        parser.parse(Path.of("src/test/resources/notebooks/graph/commit1"), "commit1",
+                URI.create("http://github.com/test/test"));
 
         Notebook familyNotebook = createNotebook(
                 "commit1",
@@ -89,9 +88,8 @@ public class ParserTest {
     @Test
     void testCommit2() throws IOException {
 
-        var commit = new Commit("commit2");
-        var repository = new Repository("http://github.com/test/test");
-        parser.parse(Path.of("src/test/resources/notebooks/graph/commit2"), commit, repository);
+        parser.parse(Path.of("src/test/resources/notebooks/graph/commit2"), "commit2",
+                URI.create("http://github.com/test/test"));
 
         Notebook familyNotebook = createNotebook(
                 "commit2",

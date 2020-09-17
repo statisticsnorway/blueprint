@@ -2,10 +2,10 @@ package no.ssb.dapla.blueprint.parser;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import no.ssb.dapla.blueprint.neo4j.NotebookStore;
-import no.ssb.dapla.blueprint.neo4j.model.Commit;
 import no.ssb.dapla.blueprint.neo4j.model.Notebook;
-import no.ssb.dapla.blueprint.neo4j.model.Repository;
 import org.neo4j.driver.AuthTokens;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import picocli.CommandLine;
 import picocli.CommandLine.Option;
 
@@ -21,6 +21,8 @@ import java.util.Objects;
 import static picocli.CommandLine.Parameters;
 
 public final class Parser {
+
+    private static final Logger log = LoggerFactory.getLogger(Parser.class);
 
     private final NotebookFileVisitor visitor;
     private final NotebookProcessor processor;
@@ -57,59 +59,65 @@ public final class Parser {
 
         Parser parser = new Parser(visitor, output);
 
-        // TODO: Refactor.
-        var commit = new Commit(options.commitId);
-        var repository = new Repository(options.repositoryURL);
-        parser.parse(options.root.toPath(), commit, repository);
+        parser.parse(options.root.toPath(), options.commitId, URI.create(options.repositoryURL));
 
     }
 
-    public void parse(Path path, Commit commit, Repository repository) throws IOException {
-        // TODO: Refactor
-        NotebookStore notebookStore = null;
-        if (output instanceof Neo4jOutput) {
-            notebookStore = ((Neo4jOutput) output).getNotebookStore();
-        }
+    public void parse(Path repositoryPath, String commitId, URI repositoryURI) throws IOException {
 
-        GitNotebookProcessor notebookProcessor = null;
-        if (processor instanceof GitNotebookProcessor) {
-            notebookProcessor = (GitNotebookProcessor) processor;
-        }
+        log.info("parsing commit {} from repository {} (checked out in {})", commitId, repositoryURI, repositoryPath);
+        try {
 
-        // We get the commit and repository since we want to add a relation.
-        var persistedRepo = notebookStore.findOrCreateRepository(repository.getId(), repository.getUri());
-        var persistedCommit = notebookStore.findOrCreateCommit(commit.getId());
+            // TODO: Refactor
+            NotebookStore notebookStore = null;
+            if (output instanceof Neo4jOutput) {
+                notebookStore = ((Neo4jOutput) output).getNotebookStore();
+            }
 
-        Files.walkFileTree(path, visitor);
-        for (Path notebookPath : visitor.getNotebooks()) {
+            GitNotebookProcessor notebookProcessor = null;
+            if (processor instanceof GitNotebookProcessor) {
+                notebookProcessor = (GitNotebookProcessor) processor;
+            }
 
-            // (repo/foo/bar).relativize(repo/) -> foo/bar.
-            var relNotebookPath = path.relativize(notebookPath);
+            // We get the commit and repository since we want to add a relation.
+            var persistedRepo = notebookStore.findOrCreateRepository(repositoryURI);
+            var persistedCommit = notebookStore.findOrCreateCommit(commitId);
 
-            Notebook nb = processor.process(path, relNotebookPath);
-            output.output(nb);
+            Files.walkFileTree(repositoryPath, visitor);
+            for (Path absolutePath : visitor.getNotebooks()) {
 
-            var diff = notebookProcessor.get(relNotebookPath.toString());
-            if (diff == null) {
-                persistedCommit.addUnchanged(relNotebookPath, nb);
-            } else {
-                switch (diff.getChangeType()) {
-                    case ADD -> {
-                        persistedCommit.addCreate(relNotebookPath, nb);
-                    }
-                    // TODO: Add missing cases.
-                    case MODIFY, RENAME, COPY -> {
-                        persistedCommit.addUpdate(relNotebookPath, nb);
-                    }
-                    case DELETE -> {
-                        persistedCommit.addDelete(relNotebookPath, nb);
+                // (repo/foo/bar).relativize(repo/) -> foo/bar.
+                var relativePath = repositoryPath.relativize(absolutePath);
+
+                Notebook nb = processor.process(repositoryPath, relativePath);
+                output.output(nb);
+
+                var diff = notebookProcessor.get(relativePath.toString());
+                if (diff == null) {
+                    persistedCommit.addUnchanged(relativePath, nb);
+                } else {
+                    switch (diff.getChangeType()) {
+                        case ADD -> {
+                            persistedCommit.addCreate(relativePath, nb);
+                        }
+                        // TODO: Add missing cases.
+                        case MODIFY, RENAME, COPY -> {
+                            persistedCommit.addUpdate(relativePath, nb);
+                        }
+                        case DELETE -> {
+                            persistedCommit.addDelete(relativePath, nb);
+                        }
                     }
                 }
             }
-        }
 
-        persistedRepo.addCommit(persistedCommit);
-        notebookStore.saveRepository(persistedRepo);
+            persistedRepo.addCommit(persistedCommit);
+            notebookStore.saveRepository(persistedRepo);
+
+        } catch (Exception ex) {
+            log.warn("failed to parse commit {} from repository {} (checked out in {})", commitId, repositoryURI,
+                    repositoryPath, ex);
+        }
 
     }
 

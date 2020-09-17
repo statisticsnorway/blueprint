@@ -41,6 +41,7 @@ public class NotebookStore {
         Set<CommittedFile> files = new HashSet<>();
         files.addAll(commit.getCreates());
         files.addAll(commit.getUpdates());
+        files.addAll(commit.getUnchanged());
         return files.stream().map(CommittedFile::getNotebook).collect(Collectors.toList());
     }
 
@@ -72,7 +73,9 @@ public class NotebookStore {
         return commit;
     }
 
-    public Repository findOrCreateRepository(String id, URI uri) {
+    public Repository findOrCreateRepository(URI uri) {
+        // TODO: Maybe use the URI as id and use a field with index for the id?
+        var id = new Repository(uri).getId();
         var commit = session.load(Repository.class, id, 0);
         if (commit == null) {
             commit = new Repository(uri);

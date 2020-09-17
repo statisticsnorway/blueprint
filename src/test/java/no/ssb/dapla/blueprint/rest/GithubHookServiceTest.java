@@ -122,7 +122,7 @@ class GithubHookServiceTest {
         assertThat(notebooks.size()).isEqualTo(4);
 
         // Test new commit
-        createNewFileInRepo(resolveRepoDir(remoteRepo.getRepository().getDirectory().getPath(), repoCounter), repoCounter);
+        duplicateFileInRepo(resolveRepoDir(remoteRepo.getRepository().getDirectory().getPath(), repoCounter), repoCounter);
         JsonNode secondPayload = commitToRemote("Second commit from remote repository", remoteRepo, repoCounter);
         handler.checkoutAndParse(secondPayload);
         String secondCommitId = secondPayload.get("head_commit").get("id").textValue();
@@ -150,7 +150,7 @@ class GithubHookServiceTest {
         String firstCommitId = payloadInitialCommit.get("head_commit").get("id").textValue();
 
         // Do a second commit, not included in payload
-        createNewFileInRepo(resolveRepoDir(remoteRepo.getRepository().getDirectory().getPath(), repoNumber), repoNumber);
+        duplicateFileInRepo(resolveRepoDir(remoteRepo.getRepository().getDirectory().getPath(), repoNumber), repoNumber);
         JsonNode secondPayload = commitToRemote("Second commit from remote repository", remoteRepo, repoNumber);
         assertThat(firstCommitId).isNotEqualTo(secondPayload.get("after").textValue());
 
@@ -175,7 +175,7 @@ class GithubHookServiceTest {
         // Create commits and payloads
         var payloads = new ArrayList<JsonNode>();
         for (int i = 0; i < numberOfThreads; i++) {
-            createNewFileInRepo(resolveRepoDir(remoteRepo.getRepository().getDirectory().getPath(), repoCounter), i);
+            duplicateFileInRepo(resolveRepoDir(remoteRepo.getRepository().getDirectory().getPath(), repoCounter), i);
             payloads.add(commitToRemote("Commit number " + i, remoteRepo, repoCounter));
         }
 
@@ -209,7 +209,7 @@ class GithubHookServiceTest {
         var payloads = new ArrayList<JsonNode>();
         for (int i = 0; i < numberOfThreads; i++) {
             Git remoteRepo = createRemoteRepo(i);
-            createNewFileInRepo(resolveRepoDir(remoteRepo.getRepository().getDirectory().getPath(), i), i);
+            duplicateFileInRepo(resolveRepoDir(remoteRepo.getRepository().getDirectory().getPath(), i), i);
             payloads.add(commitToRemote("Commit number " + 0, remoteRepo, i));
         }
 
@@ -232,6 +232,16 @@ class GithubHookServiceTest {
 
     /**
      * Duplicate one notebook in the repo.
+     */
+    private void duplicateFileInRepo(String repoDir, int counter) throws IOException {
+        Path destinationPath = Paths.get(repoDir);
+        Path sourceFile = Paths.get(String.join(File.separator, destinationPath.toString(), NOTEBOOK_NAME + NOTEBOOK_FILE_EXTENSION));
+        Path destinationFileName = Paths.get(sourceFile.toString() + "_" + counter + NOTEBOOK_FILE_EXTENSION);
+        Files.copy(sourceFile, destinationFileName, StandardCopyOption.REPLACE_EXISTING);
+    }
+
+    /**
+     * Create a new notebook in the repo.
      */
     private void createNewFileInRepo(String repoDir, int counter) throws IOException {
         Path destinationPath = Paths.get(repoDir);

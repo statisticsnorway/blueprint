@@ -5,7 +5,6 @@ import no.ssb.dapla.blueprint.neo4j.model.Dataset;
 import no.ssb.dapla.blueprint.neo4j.model.Notebook;
 import org.junit.jupiter.api.Test;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 
@@ -14,10 +13,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 class NotebookProcessorTest {
 
     NotebookProcessor processor = new NotebookProcessor(new ObjectMapper());
-
-    static File loadFile(String name) {
-        return new File("src/test/resources/" + name);
-    }
 
     @Test
     void testCanParseNotebook() throws IOException {
@@ -40,7 +35,6 @@ class NotebookProcessorTest {
         // Test against some of the strings from
         // https://github.com/minimaxir/big-list-of-naughty-strings/blob/master/blns.txt
         Notebook notebook = processor.process("src/test/resources/notebooks", "foo/notebook-with-weird-metadata.ipynb");
-        // TODO assertThat(notebook.getPath().toString()).isEqualTo("foo/notebook-with-weird-metadata.ipynb");
         assertThat(notebook.getInputs()).isNotEmpty();
         assertThat(notebook.getOutputs()).isNotEmpty();
     }
@@ -48,7 +42,6 @@ class NotebookProcessorTest {
     @Test
     void testSupportsMissingMetadata() throws IOException {
         Notebook notebook = processor.process("src/test/resources/notebooks", "foo/notebook-without-metadata.ipynb");
-        // TODO assertThat(notebook.getPath().toString()).isEqualTo("foo/notebook-without-metadata.ipynb");
         assertThat(notebook.getInputs()).isEmpty();
         assertThat(notebook.getOutputs()).isEmpty();
     }
@@ -56,7 +49,6 @@ class NotebookProcessorTest {
     @Test
     void testSupportsEmptyMetadata() throws IOException {
         Notebook notebook = processor.process("src/test/resources/notebooks", "foo/notebook-with-empty-metadata.ipynb");
-        // TODO assertThat(notebook.getPath().toString()).isEqualTo("foo/notebook-with-empty-metadata.ipynb");
         assertThat(notebook.getInputs()).isEmpty();
         assertThat(notebook.getOutputs()).isEmpty();
     }
