@@ -11,11 +11,7 @@ import java.util.Set;
 
 public class NotebookProcessor {
 
-    final ObjectMapper mapper;
-
-    public NotebookProcessor(ObjectMapper mapper) {
-        this.mapper = mapper;
-    }
+    private final ObjectMapper mapper = new ObjectMapper();
 
     public Notebook process(String path, String notebookPath) throws IOException {
         return process(Path.of(path), Path.of(notebookPath));

@@ -1,6 +1,5 @@
 package no.ssb.dapla.blueprint.parser;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import no.ssb.dapla.blueprint.neo4j.model.Dataset;
 import no.ssb.dapla.blueprint.neo4j.model.Notebook;
 import org.junit.jupiter.api.Test;
@@ -12,7 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class NotebookProcessorTest {
 
-    NotebookProcessor processor = new NotebookProcessor(new ObjectMapper());
+    NotebookProcessor processor = new NotebookProcessor();
 
     @Test
     void testCanParseNotebook() throws IOException {

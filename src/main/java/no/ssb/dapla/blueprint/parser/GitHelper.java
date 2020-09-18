@@ -13,10 +13,9 @@ import org.eclipse.jgit.treewalk.TreeWalk;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 /**
  * Wrapper around a repository to get diff info of a commit.
@@ -42,6 +41,20 @@ public class GitHelper {
                 return treeWalk.getObjectId(0).getName();
             }
         }
+    }
+
+    public void checkout(String commitId) throws GitAPIException {
+        Git.wrap(repository).checkout().setName(commitId).call();
+    }
+
+    public List<String> getRange(String revFrom, String revTo) throws IOException, GitAPIException {
+        ObjectId from = repository.resolve(revFrom);
+        ObjectId to = repository.resolve(revTo);
+        Git git = Git.wrap(repository);
+
+        return StreamSupport.stream(git.log().addRange(from, to).call().spliterator(), false)
+                .map(revCommit -> revCommit.getId().getName())
+                .collect(Collectors.toList());
     }
 
     public String getHead() throws IOException {

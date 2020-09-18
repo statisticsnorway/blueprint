@@ -131,21 +131,23 @@ public class BlueprintApplication {
                 });
     }
 
-    public static SessionFactory initNeo4jDriver(Config config) {
-
+    public static SessionFactory initNeo4jDriver(String uri, String username, String password, Integer poolSize) {
         var builder = new Configuration.Builder();
-
-        String username = config.get("username").asString().get();
-        String password = config.get("password").asString().get();
         builder.credentials(username, password);
+        builder.uri(uri);
+        builder.connectionPoolSize(poolSize);
+        return new SessionFactory(builder.build(), Commit.class.getPackageName());
+    }
 
+    public static SessionFactory initNeo4jDriver(Config config) {
         String host = config.get("host").asString().get();
         int port = config.get("port").asInt().get();
-        builder.uri("bolt://" + host + ":" + port);
-
-        builder.connectionPoolSize(config.get("poolSize").asInt().orElse(10));
-
-        return new SessionFactory(builder.build(), Commit.class.getPackageName());
+        return initNeo4jDriver(
+                config.get("username").asString().get(),
+                config.get("password").asString().get(),
+                "bolt://" + host + ":" + port,
+                config.get("poolSize").asInt().orElse(10)
+        );
     }
 
     public GitStore getGitStore() {

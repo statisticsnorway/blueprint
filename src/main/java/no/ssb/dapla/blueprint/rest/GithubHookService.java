@@ -7,9 +7,6 @@ import io.helidon.common.http.Http;
 import io.helidon.webserver.*;
 import no.ssb.dapla.blueprint.neo4j.GitStore;
 import no.ssb.dapla.blueprint.neo4j.NotebookStore;
-import no.ssb.dapla.blueprint.parser.GitNotebookProcessor;
-import no.ssb.dapla.blueprint.parser.Neo4jOutput;
-import no.ssb.dapla.blueprint.parser.NotebookFileVisitor;
 import no.ssb.dapla.blueprint.parser.Parser;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
@@ -20,7 +17,6 @@ import java.io.IOException;
 import java.net.URI;
 import java.security.NoSuchAlgorithmException;
 import java.util.Objects;
-import java.util.Set;
 import java.util.concurrent.*;
 
 import static io.helidon.common.http.Http.Status.*;
@@ -57,16 +53,8 @@ public class GithubHookService implements Service {
         try (Git git = Git.wrap(gitStore.get(URI.create(repoUrl)))) {
 
             var commitId = payload.get("head_commit").get("id").textValue();
-
-            // Checkout head_commit from repo
-            git.checkout().setName(commitId).call();
-
             var path = git.getRepository().getWorkTree().toPath();
-            var processor = new GitNotebookProcessor(new ObjectMapper(), git);
-            var visitor = new NotebookFileVisitor(Set.of(".git"));
-            var output = new Neo4jOutput(notebookStore);
-
-            Parser parser = new Parser(visitor, output, processor);
+            Parser parser = new Parser(git.getRepository(), notebookStore);
             parser.parse(path, commitId, URI.create(repoUrl));
 
         } catch (GitAPIException e) {

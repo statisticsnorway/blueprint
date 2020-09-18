@@ -26,6 +26,7 @@ import java.util.Objects;
 /**
  * Processor that can add git related information to the notebooks.
  */
+@Deprecated
 public class GitNotebookProcessor extends NotebookProcessor {
 
     private static final Logger log = LoggerFactory.getLogger(GitNotebookProcessor.class);
@@ -34,7 +35,6 @@ public class GitNotebookProcessor extends NotebookProcessor {
     private Map<String, DiffEntry> diffMap;
 
     public GitNotebookProcessor(ObjectMapper mapper, Git git) {
-        super(mapper);
         this.git = Objects.requireNonNull(git);
     }
 

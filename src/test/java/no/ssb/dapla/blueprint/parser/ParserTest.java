@@ -41,9 +41,9 @@ public class ParserTest {
     @BeforeEach
     void setUp() {
         notebooks = new ArrayList<>();
-        parser = new Parser(new NotebookFileVisitor(Set.of()), notebook -> {
-            notebooks.add(notebook);
-        });
+//        parser = new Parser(new NotebookFileVisitor(Set.of()), notebook -> {
+//            notebooks.add(notebook);
+//        });
     }
 
     @Test
