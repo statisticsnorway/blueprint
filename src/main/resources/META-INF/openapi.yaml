@@ -13,7 +13,7 @@ servers:
   - url: 'http://api.example.com/v1'
     description: Production server
 paths:
-  /repository:
+  /repositories:
     get:
       summary: Return a list of repositories
       responses:
@@ -81,6 +81,9 @@ paths:
         '200':
           description: The notebook. Note that one can ask for the actual content of the file with the content type.
           content:
+            application/vnd.ssb.blueprint.dag+json:
+              schema:
+                $ref: '#/components/schemas/Graph'
             application/x-ipynb+json:
               schema:
                 type: object
