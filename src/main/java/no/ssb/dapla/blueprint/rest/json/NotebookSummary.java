@@ -24,7 +24,7 @@ public class NotebookSummary {
 
     public String getFetchUrl() {
         return String.format(
-                "/api/v1/repositories/%s/commits/%s/notebook/%s",
+                "/api/v1/repositories/%s/commits/%s/notebooks/%s",
                 delegate.getCommit().getRepository().getId(),
                 delegate.getCommit().getId(),
                 delegate.getNotebook().getBlobId()
