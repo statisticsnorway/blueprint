@@ -44,17 +44,19 @@ public class GitHelper {
     }
 
     public void checkout(String commitId) throws GitAPIException {
-        Git.wrap(repository).checkout().setName(commitId).call();
+        try (Git git = Git.wrap(repository)) {
+            git.checkout().setName(commitId).call();
+        }
     }
 
     public List<String> getRange(String revFrom, String revTo) throws IOException, GitAPIException {
         ObjectId from = repository.resolve(revFrom);
         ObjectId to = repository.resolve(revTo);
-        Git git = Git.wrap(repository);
-
-        return StreamSupport.stream(git.log().addRange(from, to).call().spliterator(), false)
-                .map(revCommit -> revCommit.getId().getName())
-                .collect(Collectors.toList());
+        try (Git git = Git.wrap(repository)) {
+            return StreamSupport.stream(git.log().addRange(from, to).call().spliterator(), false)
+                    .map(revCommit -> revCommit.getId().getName())
+                    .collect(Collectors.toList());
+        }
     }
 
     public String getHead() throws IOException {

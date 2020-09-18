@@ -134,7 +134,7 @@ public class NotebookStore {
     public Optional<Commit> getDependencies(String repositoryId, String commitId) {
         Commit commit = session.queryForObject(Commit.class, """
                 MATCH (repository:Repository {id: $repositoryId})-[rc:CONTAINS]->(commit:Commit {id: $commitId})
-                MATCH (commit)-[:CREATES|UPDATES]->(nb:Notebook)
+                MATCH (commit)-[:CREATES|UPDATES|UNCHANGED]->(nb:Notebook)
                 CALL apoc.path.spanningTree(nb, {
                   relationshipFilter: "PRODUCES>|<CONSUMES",
                   minLevel: 1,
@@ -147,6 +147,26 @@ public class NotebookStore {
                 MATCH (notebook)-[nd:PRODUCES|CONSUMES]-(dataset:Dataset)
                 RETURN repository, rc, commit, file, notebook, nd, dataset            
                 """, Map.of("repositoryId", repositoryId, "commitId", commitId)
+        );
+        return Optional.ofNullable(commit);
+    }
+
+    public Optional<Commit> getDependencies(String repositoryId, String commitId, String notebookId) {
+        Commit commit = session.queryForObject(Commit.class, """
+                MATCH (repository:Repository {id: $repositoryId})-[rc:CONTAINS]->(commit:Commit {id: $commitId})
+                MATCH (commit)-[:CREATES|UPDATES|UNCHANGED]->(nb:Notebook {blobId: $notebookId})
+                CALL apoc.path.spanningTree(nb, {
+                  relationshipFilter: "PRODUCES>|<CONSUMES",
+                  minLevel: 1,
+                  maxLevel: -1
+                })
+                YIELD path
+                WITH nodes(path) as nbs, repository, rc, commit
+                UNWIND nbs as notebook
+                MATCH (commit:Commit)-[file:CREATES|UPDATES|UNCHANGED]->(notebook)
+                MATCH (notebook)-[nd:PRODUCES|CONSUMES]-(dataset:Dataset)
+                RETURN repository, rc, commit, file, notebook, nd, dataset            
+                """, Map.of("repositoryId", repositoryId, "commitId", commitId, "notebookId", notebookId)
         );
         return Optional.ofNullable(commit);
     }

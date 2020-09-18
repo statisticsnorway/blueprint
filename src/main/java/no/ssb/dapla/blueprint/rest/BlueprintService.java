@@ -91,11 +91,12 @@ public class BlueprintService implements Service {
                 )
                 .get("/repositories/{repoId}/commits/{commitId}/notebooks", MediaTypeHandler.create()
                         .accept(this::getNotebooksHandler, APPLICATION_NOTEBOOK_JSON, APPLICATION_JSON)
-                        .accept(this::getNotebooksDAGHandler, APPLICATION_DAG_JSON)
+                        .accept(this::getNotebooksAsDAGHandler, APPLICATION_DAG_JSON)
                         .orFail()
                 )
                 .get("/repositories/{repoId}/commits/{commitId}/notebooks/{notebookId}", MediaTypeHandler.create()
                         .accept(this::getNotebookContentHandler, APPLICATION_JUPYTER_JSON)
+                        .accept(this::getNotebookAsDAGHandler, APPLICATION_DAG_JSON)
                         .accept(this::getNotebookHandler, APPLICATION_NOTEBOOK_JSON, APPLICATION_JSON)
                         .orFail()
                 );
@@ -134,10 +135,30 @@ public class BlueprintService implements Service {
         }
     }
 
-    private void getNotebooksDAGHandler(ServerRequest request, ServerResponse response) {
+    private void getNotebooksAsDAGHandler(ServerRequest request, ServerResponse response) {
         var repositoryId = parseRepositoryId(request);
         var commitId = parseCommitId(request);
         var commitWithDependencies = notebookStore.getDependencies(repositoryId, commitId);
+        if (commitWithDependencies.isEmpty()) {
+            response.status(Http.Status.NOT_FOUND_404).send();
+        } else {
+
+            Commit commit = commitWithDependencies.get();
+            List<NotebookDetail> notebooks = Stream.of(
+                    commit.getCreates(),
+                    commit.getUpdates(),
+                    commit.getUnchanged()
+            ).flatMap(Collection::stream).map(NotebookDetail::new).collect(Collectors.toList());
+
+            response.status(Http.Status.OK_200).send(new DirectedAcyclicGraph(notebooks));
+        }
+    }
+
+    private void getNotebookAsDAGHandler(ServerRequest request, ServerResponse response) {
+        var repositoryId = parseRepositoryId(request);
+        var commitId = parseCommitId(request);
+        var notebookId = parseNotebookId(request);
+        var commitWithDependencies = notebookStore.getDependencies(repositoryId, commitId, notebookId);
         if (commitWithDependencies.isEmpty()) {
             response.status(Http.Status.NOT_FOUND_404).send();
         } else {

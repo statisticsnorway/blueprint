@@ -143,9 +143,9 @@ public class BlueprintApplication {
         String host = config.get("host").asString().get();
         int port = config.get("port").asInt().get();
         return initNeo4jDriver(
+                "bolt://" + host + ":" + port,
                 config.get("username").asString().get(),
                 config.get("password").asString().get(),
-                "bolt://" + host + ":" + port,
                 config.get("poolSize").asInt().orElse(10)
         );
     }
