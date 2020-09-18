@@ -15,7 +15,6 @@ public class Dataset {
     @Convert(PathStringConverter.class)
     private Path path;
 
-
     private Dataset() {
     }
 
@@ -29,9 +28,5 @@ public class Dataset {
 
     public Path getPath() {
         return path;
-    }
-
-    private void setPath(Path path) {
-        this.path = path;
     }
 }

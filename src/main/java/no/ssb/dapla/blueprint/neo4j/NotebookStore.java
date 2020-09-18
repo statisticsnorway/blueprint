@@ -1,6 +1,9 @@
 package no.ssb.dapla.blueprint.neo4j;
 
-import no.ssb.dapla.blueprint.neo4j.model.*;
+import no.ssb.dapla.blueprint.neo4j.model.Commit;
+import no.ssb.dapla.blueprint.neo4j.model.CommittedFile;
+import no.ssb.dapla.blueprint.neo4j.model.Notebook;
+import no.ssb.dapla.blueprint.neo4j.model.Repository;
 import org.neo4j.ogm.session.Session;
 import org.neo4j.ogm.session.SessionFactory;
 
@@ -27,17 +30,22 @@ public class NotebookStore {
         session.save(notebook);
     }
 
+    public void purgeDatabase() {
+        session.purgeDatabase();
+    }
+
     public List<Notebook> getNotebooks() {
         return new ArrayList<>(session.loadAll(Notebook.class));
     }
 
+    @Deprecated
     public List<Notebook> getNotebooks(String revisionId) {
         return getNotebooks(revisionId, false);
     }
 
+    @Deprecated
     public List<Notebook> getNotebooks(String revisionId, Boolean diff) {
         var commit = session.load(Commit.class, revisionId);
-        // TODO: Wrap in representation.
         Set<CommittedFile> files = new HashSet<>();
         files.addAll(commit.getCreates());
         files.addAll(commit.getUpdates());
@@ -45,8 +53,8 @@ public class NotebookStore {
         return files.stream().map(CommittedFile::getNotebook).collect(Collectors.toList());
     }
 
-    public List<Dependency> getDependencies(String revisionId) {
-        return List.of();
+    public Commit getCommit(String commitId) {
+        return session.load(Commit.class, commitId);
     }
 
     public Notebook getNotebook(String revisionId, String blobId) {
@@ -60,8 +68,21 @@ public class NotebookStore {
     }
 
     public Optional<Collection<Commit>> getCommits(String repositoryId) {
-        var repository = session.load(Repository.class, repositoryId);
-        return Optional.ofNullable(repository).map(Repository::getCommits);
+        Repository repository = session.load(Repository.class, repositoryId, 0);
+        if (repository == null) {
+            return Optional.empty();
+        } else {
+            Iterable<Commit> commits = session.query(
+                    Commit.class, """
+                            OPTIONAL MATCH (repository:Repository {id: $repositoryId})-[c:CONTAINS]->(commit:Commit)
+                            RETURN repository, c, commit ORDER BY commit.createdAt DESC
+                            """,
+                    Map.of("repositoryId", repositoryId)
+            );
+            ArrayList<Commit> result = new ArrayList<>();
+            commits.forEach(result::add);
+            return Optional.of(result);
+        }
     }
 
     public Commit findOrCreateCommit(String id) {
@@ -90,5 +111,43 @@ public class NotebookStore {
 
     public void saveCommit(Commit commit) {
         session.save(commit);
+    }
+
+    public Optional<Commit> getCommit(String repositoryId, String commitId) {
+        Repository repository = session.load(Repository.class, repositoryId, 0);
+        if (repository == null) {
+            return Optional.empty();
+        } else {
+            Commit commit = session.queryForObject(
+                    Commit.class, """
+                            MATCH (repository:Repository {id: $repositoryId})-[r:CONTAINS]->(commit:Commit {id : $commitId})
+                            MATCH (commit)-[file]->(notebook:Notebook)
+                            MATCH (notebook)-[ds]->(dataset:Dataset)
+                            RETURN repository, r, commit, file, notebook, ds, dataset ORDER BY file.path ASC
+                             """,
+                    Map.of("repositoryId", repositoryId, "commitId", commitId)
+            );
+            return Optional.ofNullable(commit);
+        }
+    }
+
+    public Optional<Commit> getDependencies(String repositoryId, String commitId) {
+        Commit commit = session.queryForObject(Commit.class, """
+                MATCH (repository:Repository {id: $repositoryId})-[rc:CONTAINS]->(commit:Commit {id: $commitId})
+                MATCH (commit)-[:CREATES|UPDATES]->(nb:Notebook)
+                CALL apoc.path.spanningTree(nb, {
+                  relationshipFilter: "PRODUCES>|<CONSUMES",
+                  minLevel: 1,
+                  maxLevel: -1
+                })
+                YIELD path
+                WITH nodes(path) as nbs, repository, rc, commit
+                UNWIND nbs as notebook
+                MATCH (commit:Commit)-[file:CREATES|UPDATES|UNCHANGED]->(notebook)
+                MATCH (notebook)-[nd:PRODUCES|CONSUMES]-(dataset:Dataset)
+                RETURN repository, rc, commit, file, notebook, nd, dataset            
+                """, Map.of("repositoryId", repositoryId, "commitId", commitId)
+        );
+        return Optional.ofNullable(commit);
     }
 }

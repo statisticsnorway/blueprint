@@ -9,7 +9,9 @@ import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.ObjectReader;
 import org.eclipse.jgit.revwalk.RevWalk;
+import org.eclipse.jgit.treewalk.AbstractTreeIterator;
 import org.eclipse.jgit.treewalk.CanonicalTreeParser;
+import org.eclipse.jgit.treewalk.EmptyTreeIterator;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -81,17 +83,19 @@ public class GitNotebookProcessor extends NotebookProcessor {
             this.diffMap = new HashMap<>();
 
             var commitId = getHead();
-            CanonicalTreeParser currentTree = getTree(git, commitId + "^{tree}");
-            CanonicalTreeParser previousTree = getTree(git, commitId + "~1^{tree}");
-            if (previousTree != null) {
-                var diffCommand = git.diff().setOldTree(previousTree).setNewTree(currentTree).setShowNameAndStatusOnly(true);
-                try {
-                    for (DiffEntry diffEntry : diffCommand.call()) {
-                        this.diffMap.put(diffEntry.getNewPath(), diffEntry);
-                    }
-                } catch (GitAPIException e) {
-                    throw new IOException(e.getMessage(), e);
+            AbstractTreeIterator currentTree = getTree(git, commitId + "^{tree}");
+            AbstractTreeIterator previousTree = getTree(git, commitId + "~1^{tree}");
+            if (previousTree == null) {
+                // Sha of empty tree.
+                previousTree = new EmptyTreeIterator();
+            }
+            var diffCommand = git.diff().setOldTree(previousTree).setNewTree(currentTree).setShowNameAndStatusOnly(true);
+            try {
+                for (DiffEntry diffEntry : diffCommand.call()) {
+                    this.diffMap.put(diffEntry.getNewPath(), diffEntry);
                 }
+            } catch (GitAPIException e) {
+                throw new IOException(e.getMessage(), e);
             }
         }
         return Collections.unmodifiableMap(this.diffMap);

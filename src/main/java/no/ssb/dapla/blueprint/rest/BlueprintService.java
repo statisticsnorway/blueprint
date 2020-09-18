@@ -10,10 +10,17 @@ import no.ssb.dapla.blueprint.neo4j.GitStore;
 import no.ssb.dapla.blueprint.neo4j.NotebookStore;
 import no.ssb.dapla.blueprint.neo4j.model.Commit;
 import no.ssb.dapla.blueprint.neo4j.model.Notebook;
+import no.ssb.dapla.blueprint.rest.json.CommitSummary;
+import no.ssb.dapla.blueprint.rest.json.DirectedAcyclicGraph;
+import no.ssb.dapla.blueprint.rest.json.NotebookDetail;
+import no.ssb.dapla.blueprint.rest.json.NotebookSummary;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static io.helidon.common.http.MediaType.APPLICATION_JSON;
 
@@ -65,7 +72,8 @@ public class BlueprintService implements Service {
         if (commits.isEmpty()) {
             response.status(Http.Status.NOT_FOUND_404).send();
         } else {
-            response.status(Http.Status.OK_200).send(commits.get());
+            List<CommitSummary> summaries = commits.get().stream().map(CommitSummary::new).collect(Collectors.toList());
+            response.status(Http.Status.OK_200).send(summaries);
         }
     }
 
@@ -108,15 +116,42 @@ public class BlueprintService implements Service {
     }
 
     private void getNotebooksHandler(ServerRequest request, ServerResponse response) {
-        var revisionId = parseCommitId(request);
-        var notebooks = notebookStore.getNotebooks(revisionId);
-        response.status(Http.Status.OK_200).send(notebooks);
+        var repositoryId = parseRepositoryId(request);
+        var commitId = parseCommitId(request);
+        var commit = notebookStore.getCommit(repositoryId, commitId);
+        if (commit.isEmpty()) {
+            response.status(Http.Status.NOT_FOUND_404).send();
+        } else {
+            List<NotebookSummary> summaries = Stream.of(
+                    commit.get().getUpdates(),
+                    commit.get().getCreates(),
+                    commit.get().getUnchanged()
+            ).flatMap(Collection::stream)
+                    .map(NotebookSummary::new)
+                    .collect(Collectors.toList());
+
+            response.status(Http.Status.OK_200).send(summaries);
+        }
     }
 
     private void getNotebooksDAGHandler(ServerRequest request, ServerResponse response) {
-        var revisionId = parseCommitId(request);
-        var dependencies = notebookStore.getDependencies(revisionId);
-        response.status(Http.Status.OK_200).send(dependencies);
+        var repositoryId = parseRepositoryId(request);
+        var commitId = parseCommitId(request);
+        var commitWithDependencies = notebookStore.getDependencies(repositoryId, commitId);
+        if (commitWithDependencies.isEmpty()) {
+            response.status(Http.Status.NOT_FOUND_404).send();
+        } else {
+
+            Commit commit = commitWithDependencies.get();
+            List<NotebookDetail> notebooks = Stream.of(
+                    commit.getCreates(),
+                    commit.getUpdates(),
+                    commit.getUnchanged()
+            ).flatMap(Collection::stream).map(NotebookDetail::new).collect(Collectors.toList());
+
+            response.status(Http.Status.OK_200).send(new DirectedAcyclicGraph(notebooks));
+        }
+
     }
 
     private void getNotebookHandler(ServerRequest request, ServerResponse response) {

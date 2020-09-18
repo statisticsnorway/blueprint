@@ -8,7 +8,7 @@ import org.neo4j.ogm.annotation.Relationship;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.Collections;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Objects;
 import java.util.Set;
 
@@ -16,13 +16,13 @@ import java.util.Set;
 public class Commit {
 
     @Relationship(type = "CREATES")
-    private final Set<CreatedFile> creates = new HashSet<>();
+    private final Set<CreatedFile> creates = new LinkedHashSet<>();
     @Relationship(type = "UPDATES")
-    private final Set<UpdatedFile> updates = new HashSet<>();
+    private final Set<UpdatedFile> updates = new LinkedHashSet<>();
     @Relationship(type = "DELETES")
-    private final Set<DeletedFile> deletes = new HashSet<>();
+    private final Set<DeletedFile> deletes = new LinkedHashSet<>();
     @Relationship(type = "UNCHANGED")
-    private final Set<UnchangedFile> unchanged = new HashSet<>();
+    private final Set<UnchangedFile> unchanged = new LinkedHashSet<>();
 
     @Id
     private String id;
@@ -61,7 +61,6 @@ public class Commit {
         this.creates.add(new CreatedFile(this, path, notebook));
     }
 
-    @JsonIgnore
     public Set<UpdatedFile> getUpdates() {
         return Collections.unmodifiableSet(updates);
     }
@@ -74,7 +73,6 @@ public class Commit {
         addUpdate(Path.of(path), notebook);
     }
 
-    @JsonIgnore
     public Set<DeletedFile> getDeletes() {
         return Collections.unmodifiableSet(deletes);
     }

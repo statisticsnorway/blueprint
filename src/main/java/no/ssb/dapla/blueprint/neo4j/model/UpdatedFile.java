@@ -6,6 +6,10 @@ import java.nio.file.Path;
 
 @RelationshipEntity(type = "UPDATES")
 public class UpdatedFile extends CommittedFile {
+
+    private UpdatedFile() {
+    }
+
     public UpdatedFile(Commit commit, Path path, Notebook notebook) {
         super(commit, path, notebook);
     }

@@ -1,7 +1,5 @@
 package no.ssb.dapla.blueprint.rest;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.helidon.common.http.Http;
 import io.helidon.common.http.MediaType;
 import io.helidon.config.Config;
@@ -15,13 +13,12 @@ import no.ssb.dapla.blueprint.neo4j.model.Commit;
 import no.ssb.dapla.blueprint.neo4j.model.Dataset;
 import no.ssb.dapla.blueprint.neo4j.model.Notebook;
 import no.ssb.dapla.blueprint.neo4j.model.Repository;
-import org.assertj.core.api.Condition;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
-import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.concurrent.ExecutionException;
@@ -52,28 +49,13 @@ class BlueprintServiceTest {
         server.shutdown().get(10, TimeUnit.SECONDS);
     }
 
-    private static Condition<? super WebClientResponse> httpResponse(Http.Status status) {
-        return new Condition<>(webClientResponse -> {
-            return webClientResponse.status().equals(status);
-        }, "response with status %s", status);
-    }
-
-    private static Condition<? super WebClientResponse> contentEqualTo(String content) {
-        return new Condition<>(resp -> {
-            try {
-                var objectMapper = new ObjectMapper();
-                var expected = objectMapper.readValue(content, JsonNode.class);
-                var bytes = resp.content().as(byte[].class).await();
-                var provided = objectMapper.readValue(bytes, JsonNode.class);
-                return provided.equals(expected);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        }, "response with content %s", content);
+    @BeforeEach
+    void setUp() {
+        notebookStore.purgeDatabase();
     }
 
     @Test
-    void testListRepository() {
+    void testListRepositories() {
 
         var repository = new Repository("http://example.com/foo/bar");
         notebookStore.saveRepository(repository);
@@ -109,7 +91,7 @@ class BlueprintServiceTest {
     }
 
     @Test
-    void testListRevision() {
+    void testListCommits() {
 
         var repository = new Repository("foo/bar");
         var commit1 = new Commit("commit1");
@@ -199,9 +181,9 @@ class BlueprintServiceTest {
         commit1.addCreate("foo/bar", nb2);
 
         var nb3 = new Notebook("nb3");
-        nb2.addInputs(new Dataset("/e"));
-        nb2.addInputs(new Dataset("/b"));
-        nb2.addOutputs(new Dataset("/g"));
+        nb3.addInputs(new Dataset("/e"));
+        nb3.addInputs(new Dataset("/b"));
+        nb3.addOutputs(new Dataset("/g"));
         commit2.addCreate("bar/foo", nb3);
         commit2.addUpdate("foo", nb1);
         commit2.addUpdate("foo/bar", nb2);
@@ -217,54 +199,15 @@ class BlueprintServiceTest {
                 .hasStatus(Http.Status.OK_200)
                 .hasJsonContent("""
                         [{
-                            "blobId": "nb1",
+                            "id": "nb2",
+                            "commitId": "commit1",
+                            "path": "foo/bar",
+                            "fetchUrl": "/api/v1/repositories/17cdeaefa5cc6022481c824e15a47a7726f593dd/commits/commit1/notebook/nb2"
+                        }, {
+                            "id": "nb1",
+                            "commitId": "commit1",
                             "path": "foo",
-                            "createdIn" : [{
-                              "id": "commit1",
-                              "author": "Hadrien",
-                              "createdAt": 0.0
-                            }],
-                            "updatedIn": [],
-                            "outputs": [{
-                                "path": "/d"
-                            },{
-                                "path": "/c"
-                            }],
-                            "inputs": [{
-                                "path": "/a"
-                            },{
-                                "path": "file:///b"
-                            }],
-                            "changed": false
-                        },{
-                            "blobId": "nb2",
-                            "path" : null,
-                            "path": "file:///home/hadrien/Projects/SSB/dapla/dapla-project/dapla-blueprint/foo/bar",
-                            "createdIn": [{
-                                "id": "commit1",
-                                "author": "Hadrien",
-                                "createdAt" : 0.0
-                             }],
-                             "updatedIn": [],
-                             "outputs": [],
-                             "inputs": [],
-                             "outputs": [{
-                               "path": "/e"
-                                },{
-                                "path": "/f"
-                                },{
-                                "path": "/g"
-                            }],
-                            "inputs": [{
-                                "path": "/d"
-                            },{
-                                "path": "/c"
-                            },{
-                                "path": "/e"
-                            },{
-                                "path": "/b"
-                            }],
-                            "changed": false
+                            "fetchUrl": "/api/v1/repositories/17cdeaefa5cc6022481c824e15a47a7726f593dd/commits/commit1/notebook/nb1"
                         }]
                         """);
 
@@ -276,64 +219,63 @@ class BlueprintServiceTest {
                 .hasStatus(Http.Status.OK_200)
                 .hasJsonContent("""
                         [{
-                            "blobId": "nb1",
+                            "id": "nb2",
+                            "commitId": "commit2",
+                            "path": "foo/bar",
+                            "fetchUrl": "/api/v1/repositories/17cdeaefa5cc6022481c824e15a47a7726f593dd/commits/commit2/notebook/nb2"
+                        }, {
+                            "id": "nb1",
+                            "commitId": "commit2",
                             "path": "foo",
-                            "createdIn" : [{
-                              "id": "commit1",
-                              "author": "Hadrien",
-                              "createdAt": 0.0
-                            }],
-                            "updatedIn": [],
-                            "outputs": [{
-                                "path": "/d"
-                            },{
-                                "path": "/c"
-                            }],
-                            "inputs": [{
-                                "path": "/a"
-                            },{
-                                "path": "file:///b"
-                            }],
-                            "changed": false
-                        },{
-                            "blobId": "nb2",
-                            "path" : null,
-                            "path": "file:///home/hadrien/Projects/SSB/dapla/dapla-project/dapla-blueprint/foo/bar",
-                            "createdIn": [{
-                                "id": "commit1",
-                                "author": "Hadrien",
-                                "createdAt" : 0.0
-                             }],
-                             "updatedIn": [],
-                             "outputs": [],
-                             "inputs": [],
-                             "outputs": [{
-                               "path": "/e"
-                                },{
-                                "path": "/f"
-                                },{
-                                "path": "/g"
-                            }],
-                            "inputs": [{
-                                "path": "/d"
-                            },{
-                                "path": "/c"
-                            },{
-                                "path": "/e"
-                            },{
-                                "path": "/b"
-                            }],
-                            "changed": false
+                            "fetchUrl": "/api/v1/repositories/17cdeaefa5cc6022481c824e15a47a7726f593dd/commits/commit2/notebook/nb1"
+                        }, {
+                            "id" : "nb3",
+                            "commitId" : "commit2",
+                            "path" : "bar/foo",
+                            "fetchUrl" : "/api/v1/repositories/17cdeaefa5cc6022481c824e15a47a7726f593dd/commits/commit2/notebook/nb3"
                         }]
                         """);
 
         response = client.get()
-                .path("/api/v1/repositories/{repoId}/commits/{commitId}/notebooks")
+                .path("/api/v1/repositories/17cdeaefa5cc6022481c824e15a47a7726f593dd/commits/commit2/notebooks")
                 .accept(BlueprintService.APPLICATION_DAG_JSON).submit();
         assertThat(response)
-                .succeedsWithin(1, TimeUnit.SECONDS)
-                .extracting(WebClientResponse::status)
-                .isEqualTo(Http.Status.OK_200);
+                .succeedsWithin(1, TimeUnit.SECONDS);
+        assertThat(response.await())
+                .hasStatus(Http.Status.OK_200)
+                .hasJsonContent("""
+                        {
+                          "nodes" : [ {
+                            "inputs" : [ "/b", "/e" ],
+                            "outputs" : [ "/g" ],
+                            "id" : "nb3",
+                            "commitId" : "commit2",
+                            "path" : "bar/foo",
+                            "fetchUrl" : "/api/v1/repositories/17cdeaefa5cc6022481c824e15a47a7726f593dd/commits/commit2/notebook/nb3"
+                          }, {
+                            "inputs" : [ "/c", "/d" ],
+                            "outputs" : [ "/e", "/f" ],
+                            "id" : "nb2",
+                            "commitId" : "commit2",
+                            "path" : "foo/bar",
+                            "fetchUrl" : "/api/v1/repositories/17cdeaefa5cc6022481c824e15a47a7726f593dd/commits/commit2/notebook/nb2"
+                          }, {
+                            "inputs" : [ "/a", "/b" ],
+                            "outputs" : [ "/c", "/d" ],
+                            "id" : "nb1",
+                            "commitId" : "commit2",
+                            "path" : "foo",
+                            "fetchUrl" : "/api/v1/repositories/17cdeaefa5cc6022481c824e15a47a7726f593dd/commits/commit2/notebook/nb1"
+                          } ],
+                          "edges" : [ {
+                            "from" : "nb2",
+                            "to" : "nb3"
+                          }, {
+                            "from" : "nb1",
+                            "to" : "nb2"
+                          } ]
+                        }
+                        """);
 
         response = client.get()
                 .path("/api/v1/repositories/{repoId}/commits/{commitId}/notebooks")
@@ -344,4 +286,8 @@ class BlueprintServiceTest {
                 .isEqualTo(Http.Status.NOT_ACCEPTABLE_406);
     }
 
+    @Test
+    void testListNotebooksDag() {
+
+    }
 }

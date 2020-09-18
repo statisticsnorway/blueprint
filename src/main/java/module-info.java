@@ -31,6 +31,8 @@ module no.ssb.blueprint {
     opens no.ssb.dapla.blueprint.neo4j.model to org.neo4j.ogm.core;
     opens no.ssb.dapla.blueprint.neo4j.converters to org.neo4j.ogm.core;
 
+    opens no.ssb.dapla.blueprint.rest.json to com.fasterxml.jackson.databind;
+
     exports no.ssb.dapla.blueprint;
     exports no.ssb.dapla.blueprint.neo4j;
     exports no.ssb.dapla.blueprint.neo4j.model;

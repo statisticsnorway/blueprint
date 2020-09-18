@@ -12,7 +12,6 @@ import java.util.Objects;
 
 
 public class CommittedFile {
-
     @Id
     @GeneratedValue
     private Long id;
@@ -26,10 +25,26 @@ public class CommittedFile {
     @EndNode
     private Notebook notebook;
 
+    CommittedFile() {
+    }
+
     public CommittedFile(Commit commit, Path path, Notebook notebook) {
         this.path = Objects.requireNonNull(path);
         this.commit = Objects.requireNonNull(commit);
         this.notebook = Objects.requireNonNull(notebook);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        CommittedFile that = (CommittedFile) o;
+        return Objects.equals(path, that.path);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(path);
     }
 
     public Notebook getNotebook() {

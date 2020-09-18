@@ -6,6 +6,10 @@ import java.nio.file.Path;
 
 @RelationshipEntity(type = "UNCHANGED")
 public class UnchangedFile extends CommittedFile {
+
+    private UnchangedFile() {
+    }
+
     public UnchangedFile(Commit commit, Path path, Notebook notebook) {
         super(commit, path, notebook);
     }

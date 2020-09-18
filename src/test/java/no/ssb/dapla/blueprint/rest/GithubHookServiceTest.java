@@ -30,6 +30,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.stream.Stream;
 
@@ -42,6 +43,7 @@ class GithubHookServiceTest {
     private static final String REMOTE_REPO_BASE_NAME = "remoteRepo_";
     private static final String NOTEBOOK_NAME = "notebook-with-metadata";
     private static final String NOTEBOOK_FILE_EXTENSION = ".ipynb";
+    private static final ObjectMapper mapper = new ObjectMapper();
 
     private static NotebookStore store;
     private static GithubHookService handler;
@@ -73,9 +75,9 @@ class GithubHookServiceTest {
     @BeforeEach
     void setUp() {
         session.purgeDatabase();
+        session.clear();
     }
 
-    //    static void beforeAll(Config config, SessionFactory sessionFactory) throws NoSuchAlgorithmException {
     @BeforeAll
     static void beforeAll(Config config) throws NoSuchAlgorithmException {
         var sessionFactory = new SessionFactory(
@@ -118,8 +120,12 @@ class GithubHookServiceTest {
         JsonNode payloadInitialCommit = commitToRemote("Initial commit", remoteRepo, repoCounter);
         String firstCommitId = payloadInitialCommit.get("head_commit").get("id").textValue();
         handler.checkoutAndParse(payloadInitialCommit);
-        List<Notebook> notebooks = store.getNotebooks(firstCommitId);
-        assertThat(notebooks.size()).isEqualTo(4);
+
+        Commit firstCommit = store.getCommit(firstCommitId);
+        assertThat(firstCommit.getCreates()).hasSize(4);
+        assertThat(firstCommit.getDeletes()).isEmpty();
+        assertThat(firstCommit.getUpdates()).isEmpty();
+        assertThat(firstCommit.getUnchanged()).isEmpty();
 
         // Test new commit
         duplicateFileInRepo(resolveRepoDir(remoteRepo.getRepository().getDirectory().getPath(), repoCounter), repoCounter);
@@ -127,19 +133,24 @@ class GithubHookServiceTest {
         handler.checkoutAndParse(secondPayload);
         String secondCommitId = secondPayload.get("head_commit").get("id").textValue();
         assertThat(secondCommitId).isNotEqualTo(firstCommitId);
-        notebooks = store.getNotebooks(secondCommitId);
 
-        // Two from first commit and three from second
-        assertThat(notebooks.size()).isEqualTo(5);
+        Commit secondCommit = store.getCommit(secondCommitId);
+        assertThat(secondCommit.getCreates()).hasSize(1);
+        assertThat(secondCommit.getDeletes()).isEmpty();
+        assertThat(secondCommit.getUpdates()).isEmpty();
+        assertThat(secondCommit.getUnchanged()).hasSize(4);
 
         // Delete file and commit
         JsonNode deletePayload = deleteFileFromRemote("Delete file", NOTEBOOK_NAME + NOTEBOOK_FILE_EXTENSION, remoteRepo, repoCounter);
         handler.checkoutAndParse(deletePayload);
-        assertThat(deletePayload.get("head_commit").get("id").textValue()).isNotEqualTo(secondCommitId);
-        notebooks = store.getNotebooks();
+        String thirdCommitId = deletePayload.get("head_commit").get("id").textValue();
+        assertThat(thirdCommitId).isNotEqualTo(secondCommitId);
 
-        // Two from first commit, three from second and two from third
-        assertThat(notebooks.size()).isEqualTo(13);
+        Commit thirdCommit = store.getCommit(thirdCommitId);
+        assertThat(thirdCommit.getCreates()).isEmpty();
+        assertThat(thirdCommit.getUpdates()).isEmpty();
+        assertThat(thirdCommit.getUnchanged()).hasSize(4);
+
     }
 
     @Test
@@ -155,8 +166,8 @@ class GithubHookServiceTest {
         assertThat(firstCommitId).isNotEqualTo(secondPayload.get("after").textValue());
 
         handler.checkoutAndParse(payloadInitialCommit);
-        List<Notebook> notebooks = store.getNotebooks(firstCommitId);
-        assertThat(notebooks.size()).isEqualTo(4);
+        Commit commit = store.getCommit(firstCommitId);
+        assertThat(commit.getCreates()).hasSize(4);
     }
 
     @Test
@@ -175,17 +186,15 @@ class GithubHookServiceTest {
         // Create commits and payloads
         var payloads = new ArrayList<JsonNode>();
         for (int i = 0; i < numberOfThreads; i++) {
-            duplicateFileInRepo(resolveRepoDir(remoteRepo.getRepository().getDirectory().getPath(), repoCounter), i);
+            createNewFileInRepo(resolveRepoDir(remoteRepo.getRepository().getDirectory().getPath(), repoCounter), i);
             payloads.add(commitToRemote("Commit number " + i, remoteRepo, repoCounter));
         }
 
         List<Thread> workers = new ArrayList<>();
-        int expectedNumberOfNotebooks = 0;
-        int initialNumberOfNotebooks = 5;// First commit contains five notebooks
+        int expectedNumberOfNotebooks = numberOfThreads + 4;
         for (int i = 0; i < numberOfThreads; i++) {
             workers.add(new Thread(new GitHookWorker(
                     readyThreadCounter, callingThreadBlocker, completedThreadCounter, payloads.get(i))));
-            expectedNumberOfNotebooks += initialNumberOfNotebooks++;
         }
 
         workers.forEach(Thread::start);
@@ -193,6 +202,7 @@ class GithubHookServiceTest {
 
         callingThreadBlocker.countDown();
         completedThreadCounter.await();
+        Thread.sleep(1000);
         List<Notebook> notebooks = store.getNotebooks();
 
         assertThat(notebooks.size()).isEqualTo(expectedNumberOfNotebooks);
@@ -209,12 +219,12 @@ class GithubHookServiceTest {
         var payloads = new ArrayList<JsonNode>();
         for (int i = 0; i < numberOfThreads; i++) {
             Git remoteRepo = createRemoteRepo(i);
-            duplicateFileInRepo(resolveRepoDir(remoteRepo.getRepository().getDirectory().getPath(), i), i);
+            createNewFileInRepo(resolveRepoDir(remoteRepo.getRepository().getDirectory().getPath(), i), i);
             payloads.add(commitToRemote("Commit number " + 0, remoteRepo, i));
         }
 
         List<Thread> workers = new ArrayList<>();
-        int expectedNumberOfNotebooks = numberOfThreads * 5; // Three files in each repo
+        int expectedNumberOfNotebooks = numberOfThreads + 4; // Three files in each repo
         for (int i = 0; i < numberOfThreads; i++) {
             workers.add(new Thread(new GitHookWorker(
                     readyThreadCounter, callingThreadBlocker, completedThreadCounter, payloads.get(i))));
@@ -247,7 +257,9 @@ class GithubHookServiceTest {
         Path destinationPath = Paths.get(repoDir);
         Path sourceFile = Paths.get(String.join(File.separator, destinationPath.toString(), NOTEBOOK_NAME + NOTEBOOK_FILE_EXTENSION));
         Path destinationFileName = Paths.get(sourceFile.toString() + "_" + counter + NOTEBOOK_FILE_EXTENSION);
-        Files.copy(sourceFile, destinationFileName, StandardCopyOption.REPLACE_EXISTING);
+        ObjectNode notebook = mapper.readValue(sourceFile.toFile(), ObjectNode.class);
+        ((ObjectNode) notebook.get("metadata")).put("uuid", UUID.randomUUID().toString());
+        mapper.writeValue(destinationFileName.toFile(), notebook);
     }
 
     private void copyFiles(String source, String destination) throws IOException {
