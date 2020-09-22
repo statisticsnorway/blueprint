@@ -59,11 +59,16 @@ public class NotebookStore {
         return session.load(Commit.class, commitId);
     }
 
-    @Deprecated
-    public Notebook getNotebook(String revisionId, String blobId) {
+    public Notebook getNotebook(String repositoryId, String revisionId, String blobId) {
         return session.queryForObject(Notebook.class, """
-                TODO: TODO
-                """, Map.of("commitId", revisionId, "blobId", blobId));
+                MATCH (repository:Repository {id: $repositoryId})
+                MATCH (commit:Commit {id: $commitId})
+                MATCH (notebook:Notebook { blobId: $blobId})
+                MATCH (repository)-[rc:CONTAINS]->(commit)
+                MATCH (commit)-[cn]-(notebook)
+                OPTIONAL MATCH (notebook)-[ds]->(dataset:Dataset)
+                RETURN repository, rc, commit, cn, notebook, ds, dataset
+                """, Map.of("repositoryId", repositoryId, "commitId", revisionId, "blobId", blobId));
     }
 
     public Collection<Repository> getRepositories() {

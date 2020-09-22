@@ -66,17 +66,6 @@ public class BlueprintService implements Service {
         response.status(Http.Status.OK_200).send(repositories);
     }
 
-    private void getRevisionsHandler(ServerRequest request, ServerResponse response) {
-        var revisionId = parseRepositoryId(request);
-        Optional<Collection<Commit>> commits = notebookStore.getCommits(revisionId);
-        if (commits.isEmpty()) {
-            response.status(Http.Status.NOT_FOUND_404).send();
-        } else {
-            List<CommitSummary> summaries = commits.get().stream().map(CommitSummary::new).collect(Collectors.toList());
-            response.status(Http.Status.OK_200).send(summaries);
-        }
-    }
-
     @Override
     public void update(Routing.Rules rules) {
         rules
@@ -104,12 +93,11 @@ public class BlueprintService implements Service {
 
     private void getNotebookContentHandler(ServerRequest request, ServerResponse response) {
         var repositoryId = parseRepositoryId(request);
-        var revisionId = parseCommitId(request);
+        var commitId = parseCommitId(request);
         var notebookId = parseNotebookId(request);
-
-        var notebooks = notebookStore.getNotebook(revisionId, notebookId);
+        var notebook = notebookStore.getNotebook(repositoryId, commitId, notebookId);
         try {
-            byte[] content = gitStore.getBlob(repositoryId, notebooks.getBlobId());
+            byte[] content = gitStore.getBlob(repositoryId, notebook.getBlobId());
             response.send(content);
         } catch (Exception e) {
             response.send(e);
@@ -176,9 +164,21 @@ public class BlueprintService implements Service {
     }
 
     private void getNotebookHandler(ServerRequest request, ServerResponse response) {
-        var revisionId = parseCommitId(request);
+        var repositoryId = parseRepositoryId(request);
+        var commitId = parseCommitId(request);
         var notebookId = parseNotebookId(request);
-        Notebook notebook = notebookStore.getNotebook(revisionId, notebookId);
+        Notebook notebook = notebookStore.getNotebook(repositoryId, commitId, notebookId);
         response.status(Http.Status.OK_200).send(notebook);
+    }
+
+    private void getRevisionsHandler(ServerRequest request, ServerResponse response) {
+        var repositoryId = parseRepositoryId(request);
+        Optional<Collection<Commit>> commits = notebookStore.getCommits(repositoryId);
+        if (commits.isEmpty()) {
+            response.status(Http.Status.NOT_FOUND_404).send();
+        } else {
+            List<CommitSummary> summaries = commits.get().stream().map(CommitSummary::new).collect(Collectors.toList());
+            response.status(Http.Status.OK_200).send(summaries);
+        }
     }
 }
