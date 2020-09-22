@@ -34,6 +34,7 @@ public class NotebookStore {
         session.purgeDatabase();
     }
 
+    @Deprecated
     public List<Notebook> getNotebooks() {
         return new ArrayList<>(session.loadAll(Notebook.class));
     }
@@ -53,10 +54,12 @@ public class NotebookStore {
         return files.stream().map(CommittedFile::getNotebook).collect(Collectors.toList());
     }
 
+    @Deprecated
     public Commit getCommit(String commitId) {
         return session.load(Commit.class, commitId);
     }
 
+    @Deprecated
     public Notebook getNotebook(String revisionId, String blobId) {
         return session.queryForObject(Notebook.class, """
                 TODO: TODO
@@ -113,6 +116,9 @@ public class NotebookStore {
         session.save(commit);
     }
 
+    /**
+     * Return a commit with all the notebook and datasets.
+     */
     public Optional<Commit> getCommit(String repositoryId, String commitId) {
         Repository repository = session.load(Repository.class, repositoryId, 0);
         if (repository == null) {
@@ -122,7 +128,7 @@ public class NotebookStore {
                     Commit.class, """
                             MATCH (repository:Repository {id: $repositoryId})-[r:CONTAINS]->(commit:Commit {id : $commitId})
                             MATCH (commit)-[file]->(notebook:Notebook)
-                            MATCH (notebook)-[ds]->(dataset:Dataset)
+                            OPTIONAL MATCH (notebook)-[ds]->(dataset:Dataset)
                             RETURN repository, r, commit, file, notebook, ds, dataset ORDER BY file.path ASC
                              """,
                     Map.of("repositoryId", repositoryId, "commitId", commitId)
@@ -131,6 +137,9 @@ public class NotebookStore {
         }
     }
 
+    /**
+     * Returns a commit a spanning tree of the notebook graph.
+     */
     public Optional<Commit> getDependencies(String repositoryId, String commitId) {
         Commit commit = session.queryForObject(Commit.class, """
                 MATCH (repository:Repository {id: $repositoryId})-[rc:CONTAINS]->(commit:Commit {id: $commitId})
@@ -151,6 +160,9 @@ public class NotebookStore {
         return Optional.ofNullable(commit);
     }
 
+    /**
+     * Returns a commit a spanning tree of a particular notebook.
+     */
     public Optional<Commit> getDependencies(String repositoryId, String commitId, String notebookId) {
         Commit commit = session.queryForObject(Commit.class, """
                 MATCH (repository:Repository {id: $repositoryId})-[rc:CONTAINS]->(commit:Commit {id: $commitId})

@@ -9,7 +9,9 @@ import org.eclipse.jgit.lib.ObjectReader;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevWalk;
+import org.eclipse.jgit.treewalk.AbstractTreeIterator;
 import org.eclipse.jgit.treewalk.CanonicalTreeParser;
+import org.eclipse.jgit.treewalk.EmptyTreeIterator;
 import org.eclipse.jgit.treewalk.TreeWalk;
 
 import java.io.IOException;
@@ -76,21 +78,23 @@ public class GitHelper {
 
     public Map<String, DiffEntry> getDiffMap(String commitId) throws IOException {
         Map<String, DiffEntry> diffMap = new HashMap<>();
-        CanonicalTreeParser currentTree = getTree(commitId + "^{tree}");
-        CanonicalTreeParser previousTree = getTree(commitId + "~1^{tree}");
-        if (previousTree != null) {
-            var diffCommand = Git.wrap(repository)
-                    .diff()
-                    .setOldTree(previousTree)
-                    .setNewTree(currentTree)
-                    .setShowNameAndStatusOnly(true);
-            try {
-                for (DiffEntry diffEntry : diffCommand.call()) {
-                    diffMap.put(diffEntry.getNewPath(), diffEntry);
-                }
-            } catch (GitAPIException e) {
-                throw new IOException(e.getMessage(), e);
+        AbstractTreeIterator currentTree = getTree(commitId + "^{tree}");
+        AbstractTreeIterator previousTree = getTree(commitId + "~1^{tree}");
+        if (previousTree == null) {
+            // Sha of empty tree.
+            previousTree = new EmptyTreeIterator();
+        }
+        var diffCommand = Git.wrap(repository)
+                .diff()
+                .setOldTree(previousTree)
+                .setNewTree(currentTree)
+                .setShowNameAndStatusOnly(true);
+        try {
+            for (DiffEntry diffEntry : diffCommand.call()) {
+                diffMap.put(diffEntry.getNewPath(), diffEntry);
             }
+        } catch (GitAPIException e) {
+            throw new IOException(e.getMessage(), e);
         }
         return Collections.unmodifiableMap(diffMap);
     }

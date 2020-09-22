@@ -38,8 +38,12 @@ public class CommitSummary {
         return delegate.getCommittedAt();
     }
 
-    public Object getCreatedAt() {
+    public Instant getCreatedAt() {
         return delegate.getAuthoredAt();
+    }
+
+    public String getMessage() {
+        return delegate.getMessage();
     }
 
 }

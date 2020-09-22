@@ -17,8 +17,6 @@ class NotebookProcessorTest {
     void testCanParseNotebook() throws IOException {
         Notebook notebook = processor.process("src/test/resources/notebooks", "foo/notebook-with-metadata.ipynb");
 
-        // TODO assertThat(notebook.getPath().toString()).isEqualTo("foo/notebook-with-metadata.ipynb");
-
         assertThat(notebook.getInputs()).extracting(Dataset::getPath).extracting(Path::toString)
                 .contains(
                         "/some/input/path", "/some/other/input/path"
