@@ -5,6 +5,7 @@ import no.ssb.dapla.blueprint.neo4j.model.Notebook;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,6 +62,7 @@ public final class Parser {
         } else {
             parser.parse(options.root.toPath(), options.commitId, URI.create(options.repositoryURL));
         }
+        sessionFactory.close();
     }
 
     public void parse(Path repositoryPath, URI repositoryURI, String revFrom, String revTo) throws IOException, GitAPIException {
@@ -79,7 +81,22 @@ public final class Parser {
 
             // We get the commit and repository since we want to add a relation.
             var persistedRepo = notebookStore.findOrCreateRepository(repositoryURI);
+
             var persistedCommit = notebookStore.findOrCreateCommit(commitId);
+
+            RevCommit commit = gitHelper.getCommit(commitId);
+
+            persistedCommit.setAuthorName(commit.getAuthorIdent().getName());
+            persistedCommit.setAuthorEmail(commit.getAuthorIdent().getEmailAddress());
+            persistedCommit.setAuthoredAt(commit.getAuthorIdent().getWhen().toInstant()
+                    .atZone(commit.getAuthorIdent().getTimeZone().toZoneId()).toInstant());
+
+            persistedCommit.setCommitterName(commit.getAuthorIdent().getName());
+            persistedCommit.setCommitterEmail(commit.getAuthorIdent().getEmailAddress());
+            persistedCommit.setCommittedAt(commit.getAuthorIdent().getWhen().toInstant()
+                    .atZone(commit.getAuthorIdent().getTimeZone().toZoneId()).toInstant());
+
+            persistedCommit.setMessage(commit.getFullMessage());
 
             Files.walkFileTree(repositoryPath, visitor);
             for (Path absolutePath : visitor.getNotebooks()) {
@@ -115,6 +132,8 @@ public final class Parser {
         } catch (Exception ex) {
             log.warn("failed to parse commit {} from repository {} (checked out in {})", commitId, repositoryURI,
                     repositoryPath, ex);
+        } finally {
+            visitor.close();
         }
 
     }

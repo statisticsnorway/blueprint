@@ -95,11 +95,11 @@ class BlueprintServiceTest {
 
         var repository = new Repository("foo/bar");
         var commit1 = new Commit("commit1");
-        commit1.setAuthor("Hadrien");
-        commit1.setCreatedAt(Instant.ofEpochMilli(0));
+        commit1.setAuthorName("Hadrien");
+        commit1.setAuthoredAt(Instant.ofEpochMilli(0));
         var commit2 = new Commit("commit2");
-        commit2.setAuthor("Arild");
-        commit2.setCreatedAt(Instant.ofEpochMilli(1000));
+        commit2.setAuthorName("Arild");
+        commit2.setAuthoredAt(Instant.ofEpochMilli(1000));
         repository.addCommit(commit1);
         repository.addCommit(commit2);
 
@@ -157,11 +157,11 @@ class BlueprintServiceTest {
         notebookStore.saveRepository(repository);
 
         var commit1 = new Commit("commit1");
-        commit1.setAuthor("Hadrien");
-        commit1.setCreatedAt(Instant.ofEpochMilli(0));
+        commit1.setAuthorName("Hadrien");
+        commit1.setAuthoredAt(Instant.ofEpochMilli(0));
         var commit2 = new Commit("commit2");
-        commit2.setAuthor("Arild");
-        commit2.setCreatedAt(Instant.ofEpochMilli(1000));
+        commit2.setAuthorName("Arild");
+        commit2.setAuthoredAt(Instant.ofEpochMilli(1000));
         repository.addCommit(commit1);
         repository.addCommit(commit2);
 

@@ -26,9 +26,14 @@ public class Commit {
 
     @Id
     private String id;
-    private String author;
-    private Instant createdAt;
 
+    private String authorName;
+    private String authorEmail;
+    private Instant authoredAt;
+    private String committerName;
+    private String committerEmail;
+    private Instant committedAt;
+    private String message;
     @Relationship(type = "CONTAINS", direction = Relationship.INCOMING)
     private Repository repository;
 
@@ -37,6 +42,62 @@ public class Commit {
 
     public Commit(String id) {
         this.id = Objects.requireNonNull(id);
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public void setMessage(String message) {
+        this.message = message;
+    }
+
+    public String getAuthorName() {
+        return authorName;
+    }
+
+    public void setAuthorName(String authorName) {
+        this.authorName = authorName;
+    }
+
+    public String getAuthorEmail() {
+        return authorEmail;
+    }
+
+    public void setAuthorEmail(String authorEmail) {
+        this.authorEmail = authorEmail;
+    }
+
+    public Instant getAuthoredAt() {
+        return authoredAt;
+    }
+
+    public void setAuthoredAt(Instant authoredAt) {
+        this.authoredAt = authoredAt;
+    }
+
+    public String getCommitterName() {
+        return committerName;
+    }
+
+    public void setCommitterName(String committerName) {
+        this.committerName = committerName;
+    }
+
+    public String getCommitterEmail() {
+        return committerEmail;
+    }
+
+    public void setCommitterEmail(String committerEmail) {
+        this.committerEmail = committerEmail;
+    }
+
+    public Instant getCommittedAt() {
+        return committedAt;
+    }
+
+    public void setCommittedAt(Instant committedAt) {
+        this.committedAt = committedAt;
     }
 
     @JsonIgnore
@@ -95,21 +156,5 @@ public class Commit {
 
     public void addUnchanged(Path path, Notebook notebook) {
         this.unchanged.add(new UnchangedFile(this, path, notebook));
-    }
-
-    public String getAuthor() {
-        return author;
-    }
-
-    public void setAuthor(String author) {
-        this.author = author;
-    }
-
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(Instant createdAt) {
-        this.createdAt = createdAt;
     }
 }

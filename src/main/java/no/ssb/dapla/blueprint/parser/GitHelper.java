@@ -7,6 +7,7 @@ import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.ObjectReader;
 import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.treewalk.CanonicalTreeParser;
 import org.eclipse.jgit.treewalk.TreeWalk;
@@ -46,6 +47,15 @@ public class GitHelper {
     public void checkout(String commitId) throws GitAPIException {
         try (Git git = Git.wrap(repository)) {
             git.checkout().setName(commitId).call();
+        }
+    }
+
+    public RevCommit getCommit(String rev) throws IOException {
+        try (RevWalk walk = new RevWalk(repository)) {
+            ObjectId objectId = repository.resolve(rev);
+            RevCommit commit = walk.parseCommit(objectId);
+            walk.dispose();
+            return commit;
         }
     }
 

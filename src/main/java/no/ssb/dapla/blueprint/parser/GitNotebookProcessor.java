@@ -13,8 +13,6 @@ import org.eclipse.jgit.treewalk.AbstractTreeIterator;
 import org.eclipse.jgit.treewalk.CanonicalTreeParser;
 import org.eclipse.jgit.treewalk.EmptyTreeIterator;
 import org.eclipse.jgit.treewalk.TreeWalk;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -29,7 +27,6 @@ import java.util.Objects;
 @Deprecated
 public class GitNotebookProcessor extends NotebookProcessor {
 
-    private static final Logger log = LoggerFactory.getLogger(GitNotebookProcessor.class);
 
     private final Git git;
     private Map<String, DiffEntry> diffMap;

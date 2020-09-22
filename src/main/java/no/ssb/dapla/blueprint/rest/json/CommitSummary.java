@@ -1,5 +1,7 @@
 package no.ssb.dapla.blueprint.rest.json;
 
+import java.time.Instant;
+
 public class CommitSummary {
 
     private final no.ssb.dapla.blueprint.neo4j.model.Commit delegate;
@@ -12,12 +14,32 @@ public class CommitSummary {
         return delegate.getId();
     }
 
-    public String getAuthor() {
-        return delegate.getAuthor();
+    public String getAuthorName() {
+        return delegate.getAuthorName();
+    }
+
+    public String getAuthorEmail() {
+        return delegate.getAuthorEmail();
+    }
+
+    public Instant getAuthoredAt() {
+        return delegate.getAuthoredAt();
+    }
+
+    public String getCommitterName() {
+        return delegate.getCommitterName();
+    }
+
+    public String getCommitterEmail() {
+        return delegate.getCommitterEmail();
+    }
+
+    public Instant getCommittedAt() {
+        return delegate.getCommittedAt();
     }
 
     public Object getCreatedAt() {
-        return delegate.getCreatedAt();
+        return delegate.getAuthoredAt();
     }
 
 }

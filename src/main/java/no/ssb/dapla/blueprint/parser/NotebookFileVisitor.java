@@ -10,7 +10,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
 import java.util.regex.Pattern;
 
-public class NotebookFileVisitor extends SimpleFileVisitor<Path> {
+public class NotebookFileVisitor extends SimpleFileVisitor<Path> implements AutoCloseable {
 
     private static final Logger log = LoggerFactory.getLogger(NotebookFileVisitor.class);
     private final Set<String> ignores;
@@ -44,5 +44,10 @@ public class NotebookFileVisitor extends SimpleFileVisitor<Path> {
             log.debug("ignoring {}", file);
         }
         return FileVisitResult.CONTINUE;
+    }
+
+    @Override
+    public void close() {
+        notebooks.clear();
     }
 }
