@@ -84,8 +84,6 @@ public class EmbeddedNeo4jExtension implements BeforeAllCallback, ParameterResol
             this.databaseFolder.deleteOnExit();
             this.managementService = new DatabaseManagementServiceBuilder(this.databaseFolder)
                     .setConfig(GraphDatabaseSettings.pagecache_memory, "512M")
-                    .setConfig(GraphDatabaseSettings.string_block_size, 60)
-                    .setConfig(GraphDatabaseSettings.array_block_size, 300)
                     .setConfig(BoltConnector.enabled, true)
                     .setConfig(BoltConnector.listen_address, new SocketAddress(host, port))
                     .build();
