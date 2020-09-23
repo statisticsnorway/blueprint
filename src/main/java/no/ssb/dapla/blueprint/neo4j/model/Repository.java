@@ -9,25 +9,18 @@ import org.neo4j.ogm.annotation.Relationship;
 import org.neo4j.ogm.annotation.typeconversion.Convert;
 
 import java.net.URI;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Set;
 
 @NodeEntity
 public class Repository {
 
+    @Relationship(type = "CONTAINS")
+    final Set<Commit> commits = new LinkedHashSet<>();
     @Id
     private String id;
-
     @Convert(URIStringConverter.class)
     private URI uri;
-
-    @JsonIgnore
-    public Set<Commit> getCommits() {
-        return commits;
-    }
-
-    @Relationship(type = "CONTAINS")
-    final Set<Commit> commits = new HashSet<>();
 
     private Repository() {
     }
@@ -39,6 +32,11 @@ public class Repository {
     public Repository(URI uri) {
         this.uri = uri;
         this.id = GitStore.computeHash(uri);
+    }
+
+    @JsonIgnore
+    public Set<Commit> getCommits() {
+        return commits;
     }
 
     public String getId() {

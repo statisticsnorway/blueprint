@@ -82,8 +82,8 @@ public class NotebookStore {
         } else {
             Iterable<Commit> commits = session.query(
                     Commit.class, """
-                            OPTIONAL MATCH (repository:Repository {id: $repositoryId})-[c:CONTAINS]->(commit:Commit)
-                            RETURN repository, c, commit ORDER BY commit.createdAt DESC
+                            MATCH (repository:Repository {id: $repositoryId})-[rc:CONTAINS]->(commit:Commit)
+                            RETURN repository, rc, commit ORDER BY commit.createdAt DESC
                             """,
                     Map.of("repositoryId", repositoryId)
             );

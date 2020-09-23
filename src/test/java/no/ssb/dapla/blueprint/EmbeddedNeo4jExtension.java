@@ -88,8 +88,17 @@ public class EmbeddedNeo4jExtension implements BeforeAllCallback, ParameterResol
                     .setConfig(BoltConnector.listen_address, new SocketAddress(host, port))
                     .build();
 
+            // TODO: Figure out a way to load extensions.
+            //     GraphDatabaseAPI database = (GraphDatabaseAPI) this.managementService.database(DEFAULT_DATABASE_NAME);
+            //     GlobalProcedures procedures = database.getDependencyResolver().resolveDependency(GlobalProcedures.class);
+            //     procedures.registerProcedure(PathExplorer.class, true);
+            // } catch (KernelException e) {
+            //     e.printStackTrace();
+            // }
+
             var builder = new Configuration.Builder();
             builder.uri("bolt://" + host + ":" + port);
+            builder.connectionPoolSize(1);
 
             this.factory = new SessionFactory(builder.build(), Commit.class.getPackageName());
         }
