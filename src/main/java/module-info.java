@@ -1,4 +1,5 @@
 module no.ssb.blueprint {
+
     requires io.helidon.webserver;
     requires io.helidon.health;
     requires java.logging;
@@ -20,17 +21,13 @@ module no.ssb.blueprint {
     requires org.eclipse.jgit;
 
     requires info.picocli;
-    requires freemarker;
-
-
-    opens no.ssb.dapla.blueprint.parser to info.picocli;
-
     requires org.neo4j.ogm.core;
     requires org.neo4j.ogm.drivers.api;
     requires io.github.classgraph;
+
+    opens no.ssb.dapla.blueprint.parser to info.picocli;
     opens no.ssb.dapla.blueprint.neo4j.model to org.neo4j.ogm.core;
     opens no.ssb.dapla.blueprint.neo4j.converters to org.neo4j.ogm.core;
-
     opens no.ssb.dapla.blueprint.rest.json to com.fasterxml.jackson.databind;
 
     exports no.ssb.dapla.blueprint;
