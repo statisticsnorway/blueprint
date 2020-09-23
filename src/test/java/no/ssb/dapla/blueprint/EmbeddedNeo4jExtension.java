@@ -1,15 +1,16 @@
-package no.ssb.dapla.blueprint.test;
+package no.ssb.dapla.blueprint;
 
 
 import io.helidon.config.Config;
+import no.ssb.dapla.blueprint.neo4j.model.Commit;
 import org.junit.jupiter.api.extension.*;
 import org.neo4j.configuration.GraphDatabaseSettings;
 import org.neo4j.configuration.connectors.BoltConnector;
 import org.neo4j.configuration.helpers.SocketAddress;
 import org.neo4j.dbms.api.DatabaseManagementService;
 import org.neo4j.dbms.api.DatabaseManagementServiceBuilder;
-import org.neo4j.driver.Driver;
-import org.neo4j.driver.GraphDatabase;
+import org.neo4j.ogm.config.Configuration;
+import org.neo4j.ogm.session.SessionFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,14 +57,14 @@ public class EmbeddedNeo4jExtension implements BeforeAllCallback, ParameterResol
     @Override
     public boolean supportsParameter(ParameterContext parameterContext, ExtensionContext extensionContext) throws ParameterResolutionException {
         Class<?> type = parameterContext.getParameter().getType();
-        return type.equals(Driver.class) || type.equals(Config.class);
+        return type.equals(SessionFactory.class) || type.equals(Config.class);
     }
 
     @Override
     public Object resolveParameter(ParameterContext parameterContext, ExtensionContext extensionContext) throws ParameterResolutionException {
         Class<?> type = parameterContext.getParameter().getType();
-        if (type.equals(Driver.class)) {
-            return getStore(extensionContext).get(NEO_KEY, ClosableHolder.class).driver;
+        if (type.equals(SessionFactory.class)) {
+            return getStore(extensionContext).get(NEO_KEY, ClosableHolder.class).factory;
         }
         if (type.equals(Config.class)) {
             return config;
@@ -75,7 +76,7 @@ public class EmbeddedNeo4jExtension implements BeforeAllCallback, ParameterResol
 
         private final DatabaseManagementService managementService;
         private final File databaseFolder;
-        private final Driver driver;
+        private final SessionFactory factory;
 
         private ClosableHolder(Path databaseFolder, String host, Integer port) {
             logger.warn("starting up neo4j");
@@ -83,19 +84,30 @@ public class EmbeddedNeo4jExtension implements BeforeAllCallback, ParameterResol
             this.databaseFolder.deleteOnExit();
             this.managementService = new DatabaseManagementServiceBuilder(this.databaseFolder)
                     .setConfig(GraphDatabaseSettings.pagecache_memory, "512M")
-                    .setConfig(GraphDatabaseSettings.string_block_size, 60)
-                    .setConfig(GraphDatabaseSettings.array_block_size, 300)
                     .setConfig(BoltConnector.enabled, true)
                     .setConfig(BoltConnector.listen_address, new SocketAddress(host, port))
                     .build();
-            this.driver = GraphDatabase.driver("bolt://" + host + ":" + port);
+
+            // TODO: Figure out a way to load extensions.
+            //     GraphDatabaseAPI database = (GraphDatabaseAPI) this.managementService.database(DEFAULT_DATABASE_NAME);
+            //     GlobalProcedures procedures = database.getDependencyResolver().resolveDependency(GlobalProcedures.class);
+            //     procedures.registerProcedure(PathExplorer.class, true);
+            // } catch (KernelException e) {
+            //     e.printStackTrace();
+            // }
+
+            var builder = new Configuration.Builder();
+            builder.uri("bolt://" + host + ":" + port);
+            builder.connectionPoolSize(1);
+
+            this.factory = new SessionFactory(builder.build(), Commit.class.getPackageName());
         }
 
 
         @Override
         public void close() throws Throwable {
             logger.warn("shutting down neo4j");
-            driver.close();
+            factory.close();
             managementService.shutdown();
             Files.walk(databaseFolder.toPath())
                     .sorted(Comparator.reverseOrder()).forEach(t -> {

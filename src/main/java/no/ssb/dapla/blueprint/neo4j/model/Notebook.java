@@ -1,30 +1,52 @@
 package no.ssb.dapla.blueprint.neo4j.model;
 
-import java.net.URI;
-import java.nio.file.Path;
-import java.util.HashSet;
-import java.util.Set;
+import org.neo4j.ogm.annotation.Id;
+import org.neo4j.ogm.annotation.NodeEntity;
+import org.neo4j.ogm.annotation.Relationship;
 
-/**
- * A simple model of the notebook metadata.
- * <p>
- * Used as a contract btw the parser and the service.
- */
+import java.util.*;
+
+@NodeEntity
 public class Notebook {
 
-    private String blobId = "";
-    private Path path;
-    private Set<String> inputs = new HashSet<>();
-    private Set<String> outputs = new HashSet<>();
-    private Boolean changed = true;
-    private Revision revision;
+    @Id
+    private String blobId;
 
-    public Revision getRevision() {
-        return revision;
+    @Relationship(type = "PRODUCES")
+    private Set<Dataset> outputs = new HashSet<>();
+
+    @Relationship(type = "CONSUMES")
+    private Set<Dataset> inputs = new HashSet<>();
+
+    public Notebook() {
     }
 
-    public void setRevision(Revision revision) {
-        this.revision = revision;
+    public Notebook(String blobId) {
+        this.blobId = Objects.requireNonNull(blobId);
+    }
+
+    public Set<Dataset> getOutputs() {
+        return outputs;
+    }
+
+    public void addOutputs(Dataset... datasets) {
+        addOutputs(Arrays.asList(datasets));
+    }
+
+    public void addOutputs(Collection<? extends Dataset> datasets) {
+        this.outputs.addAll(datasets);
+    }
+
+    public Set<Dataset> getInputs() {
+        return inputs;
+    }
+
+    public void addInputs(Dataset... datasets) {
+        addInputs(Arrays.asList(datasets));
+    }
+
+    public void addInputs(Collection<? extends Dataset> datasets) {
+        this.inputs.addAll(datasets);
     }
 
     public String getBlobId() {
@@ -35,51 +57,4 @@ public class Notebook {
         this.blobId = blobId;
     }
 
-    public Boolean isChanged() {
-        return changed;
-    }
-
-    public void setChanged(Boolean changed) {
-        this.changed = changed;
-    }
-
-    public URI getRepositoryUri() {
-        return getRevision().getRepository().getUri();
-    }
-
-    public String getCommitId() {
-        return getRevision().getId();
-    }
-
-    public Path getFileName() {
-        return getPath().getFileName();
-    }
-
-    public Set<String> getInputs() {
-        return inputs;
-    }
-
-    public void setInputs(Set<String> inputs) {
-        this.inputs = inputs;
-    }
-
-    public Set<String> getOutputs() {
-        return outputs;
-    }
-
-    public void setOutputs(Set<String> outputs) {
-        this.outputs = outputs;
-    }
-
-    public Path getPath() {
-        return path;
-    }
-
-    public void setPath(Path path) {
-        this.path = path;
-    }
-
-    public void setPath(String path) {
-        setPath(Path.of(path));
-    }
 }

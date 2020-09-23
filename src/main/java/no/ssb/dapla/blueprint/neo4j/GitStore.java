@@ -10,17 +10,18 @@ import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
+import org.eclipse.jgit.util.Hex;
 
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
-
-import static no.ssb.dapla.blueprint.neo4j.model.Repository.computeHash;
 
 /**
  * Stores and cache repositories.
@@ -36,6 +37,16 @@ public class GitStore {
 
     public GitStore(Config config) {
         this.config = Objects.requireNonNull(config);
+    }
+
+    public static String computeHash(URI remote) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-1");
+            var hash = digest.digest(remote.normalize().toASCIIString().getBytes());
+            return Hex.toHexString(hash);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalArgumentException(e);
+        }
     }
 
     /**

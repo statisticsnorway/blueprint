@@ -36,13 +36,35 @@
         <dependency>
             <groupId>org.neo4j.driver</groupId>
             <artifactId>neo4j-java-driver</artifactId>
-            <version>4.0.1</version>
+            <version>4.1.1</version>
         </dependency>
+        <dependency>
+            <groupId>org.neo4j</groupId>
+            <artifactId>neo4j-ogm-core</artifactId>
+            <version>3.2.16</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.neo4j</groupId>
+            <artifactId>neo4j-ogm-bolt-driver</artifactId>
+            <version>3.2.16</version>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!--        TODO: Fails with Segmentation error-->
+        <!--        <dependency>-->
+        <!--            <groupId>org.neo4j</groupId>-->
+        <!--            <artifactId>neo4j-ogm-bolt-native-types</artifactId>-->
+        <!--            <version>3.2.15</version>-->
+        <!--            <scope>runtime</scope>-->
+        <!--        </dependency>-->
+
         <dependency>
             <groupId>no.ssb.jpms</groupId>
             <artifactId>jsr305-and-javax.annotation-api</artifactId>
             <version>1.2</version>
         </dependency>
+
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
@@ -181,10 +203,11 @@
             <artifactId>helidon-webclient</artifactId>
             <scope>test</scope>
         </dependency>
+
         <dependency>
             <groupId>org.neo4j</groupId>
             <artifactId>neo4j</artifactId>
-            <version>4.0.3</version>
+            <version>4.1.1</version>
             <scope>test</scope>
             <exclusions>
                 <exclusion>
@@ -202,9 +225,16 @@
             </exclusions>
         </dependency>
         <dependency>
+            <groupId>org.neo4j.procedure</groupId>
+            <artifactId>apoc</artifactId>
+            <version>4.1.0.2</version>
+            <classifier>all</classifier>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>org.neo4j</groupId>
             <artifactId>neo4j-bolt</artifactId>
-            <version>4.0.3</version>
+            <version>4.1.1</version>
             <scope>test</scope>
         </dependency>
 

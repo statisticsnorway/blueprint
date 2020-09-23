@@ -9,10 +9,10 @@ import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.ObjectReader;
 import org.eclipse.jgit.revwalk.RevWalk;
+import org.eclipse.jgit.treewalk.AbstractTreeIterator;
 import org.eclipse.jgit.treewalk.CanonicalTreeParser;
+import org.eclipse.jgit.treewalk.EmptyTreeIterator;
 import org.eclipse.jgit.treewalk.TreeWalk;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -24,16 +24,20 @@ import java.util.Objects;
 /**
  * Processor that can add git related information to the notebooks.
  */
+@Deprecated
 public class GitNotebookProcessor extends NotebookProcessor {
 
-    private static final Logger log = LoggerFactory.getLogger(GitNotebookProcessor.class);
 
     private final Git git;
     private Map<String, DiffEntry> diffMap;
 
     public GitNotebookProcessor(ObjectMapper mapper, Git git) {
-        super(mapper);
         this.git = Objects.requireNonNull(git);
+    }
+
+
+    public DiffEntry get(String path) {
+        return diffMap.get(path);
     }
 
     @Override
@@ -45,7 +49,7 @@ public class GitNotebookProcessor extends NotebookProcessor {
 
         // Since we are only looking at all the files that exists a match always means
         // that the file was changed.
-        notebook.setChanged(diffEntries.containsKey(notebookPath.toString()));
+
         return notebook;
     }
 
@@ -76,17 +80,19 @@ public class GitNotebookProcessor extends NotebookProcessor {
             this.diffMap = new HashMap<>();
 
             var commitId = getHead();
-            CanonicalTreeParser currentTree = getTree(git, commitId + "^{tree}");
-            CanonicalTreeParser previousTree = getTree(git, commitId + "~1^{tree}");
-            if (previousTree != null) {
-                var diffCommand = git.diff().setOldTree(previousTree).setNewTree(currentTree).setShowNameAndStatusOnly(true);
-                try {
-                    for (DiffEntry diffEntry : diffCommand.call()) {
-                        this.diffMap.put(diffEntry.getNewPath(), diffEntry);
-                    }
-                } catch (GitAPIException e) {
-                    throw new IOException(e.getMessage(), e);
+            AbstractTreeIterator currentTree = getTree(git, commitId + "^{tree}");
+            AbstractTreeIterator previousTree = getTree(git, commitId + "~1^{tree}");
+            if (previousTree == null) {
+                // Sha of empty tree.
+                previousTree = new EmptyTreeIterator();
+            }
+            var diffCommand = git.diff().setOldTree(previousTree).setNewTree(currentTree).setShowNameAndStatusOnly(true);
+            try {
+                for (DiffEntry diffEntry : diffCommand.call()) {
+                    this.diffMap.put(diffEntry.getNewPath(), diffEntry);
                 }
+            } catch (GitAPIException e) {
+                throw new IOException(e.getMessage(), e);
             }
         }
         return Collections.unmodifiableMap(this.diffMap);

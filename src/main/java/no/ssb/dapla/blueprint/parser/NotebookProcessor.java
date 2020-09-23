@@ -2,6 +2,7 @@ package no.ssb.dapla.blueprint.parser;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import no.ssb.dapla.blueprint.neo4j.model.Dataset;
 import no.ssb.dapla.blueprint.neo4j.model.Notebook;
 
 import java.io.IOException;
@@ -10,11 +11,7 @@ import java.util.Set;
 
 public class NotebookProcessor {
 
-    final ObjectMapper mapper;
-
-    public NotebookProcessor(ObjectMapper mapper) {
-        this.mapper = mapper;
-    }
+    private final ObjectMapper mapper = new ObjectMapper();
 
     public Notebook process(String path, String notebookPath) throws IOException {
         return process(Path.of(path), Path.of(notebookPath));
@@ -25,7 +22,6 @@ public class NotebookProcessor {
         JsonNode jsonNode = mapper.readTree(path.resolve(notebookPath).toFile());
 
         Notebook notebook = new Notebook();
-        notebook.setPath(notebookPath);
 
         JsonNode cells = jsonNode.get("cells");
         processCells(notebook, cells);
@@ -49,7 +45,7 @@ public class NotebookProcessor {
             throw new IOException("source was not an array");
         }
 
-        Set<String> set = null;
+        Set<Dataset> set = null;
         for (JsonNode line : source) {
             String textLine = line.asText().trim();
             // Ignore regular code.
@@ -72,7 +68,7 @@ public class NotebookProcessor {
             }
 
             if (set != null) {
-                set.add(textLine.trim());
+                set.add(new Dataset(textLine.trim()));
             }
         }
     }

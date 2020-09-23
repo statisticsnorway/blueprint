@@ -13,20 +13,18 @@ import io.helidon.webserver.StaticContentSupport;
 import io.helidon.webserver.WebServer;
 import io.helidon.webserver.WebTracingConfig;
 import io.helidon.webserver.accesslog.AccessLogSupport;
-import no.ssb.dapla.blueprint.health.Neo4jHealthCheck;
 import no.ssb.dapla.blueprint.neo4j.GitStore;
 import no.ssb.dapla.blueprint.neo4j.NotebookStore;
+import no.ssb.dapla.blueprint.neo4j.model.Commit;
 import no.ssb.dapla.blueprint.rest.BlueprintService;
 import no.ssb.dapla.blueprint.rest.GithubHookService;
 import no.ssb.dapla.blueprint.rest.GithubHookVerifier;
-import org.neo4j.driver.AuthTokens;
-import org.neo4j.driver.Driver;
-import org.neo4j.driver.GraphDatabase;
+import org.neo4j.ogm.config.Configuration;
+import org.neo4j.ogm.session.SessionFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.bridge.SLF4JBridgeHandler;
 
-import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.security.NoSuchAlgorithmException;
@@ -50,21 +48,23 @@ public class BlueprintApplication {
     }
 
     private final Map<Class<?>, Object> instanceByType = new ConcurrentHashMap<>();
+    private final NotebookStore notebookStore;
+    private final GitStore gitStore;
 
     public BlueprintApplication(Config config) throws NoSuchAlgorithmException {
         put(Config.class, config);
 
-        Driver driver = initNeo4jDriver(config.get("neo4j"));
-        put(Driver.class, driver);
+        SessionFactory driver = initNeo4jDriver(config.get("neo4j"));
+        put(SessionFactory.class, driver);
 
         HealthSupport health = HealthSupport.builder()
                 .addLiveness(HealthChecks.healthChecks())
-                .addLiveness(new Neo4jHealthCheck(driver))
+                //.addLiveness(new Neo4jHealthCheck(driver))
                 .build();
         MetricsSupport metrics = MetricsSupport.create();
 
-        var notebookStore = new NotebookStore(driver);
-        var gitStore = new GitStore(config);
+        this.notebookStore = new NotebookStore(driver);
+        gitStore = new GitStore(config);
 
         BlueprintService blueprintService = new BlueprintService(notebookStore, gitStore);
         GithubHookService githubHookService = new GithubHookService(
@@ -108,16 +108,12 @@ public class BlueprintApplication {
         put(WebServer.class, server.build());
     }
 
-    public static void initLogging() {
-    }
-
     /**
      * Application main entry point.
      *
      * @param args command line arguments.
-     * @throws IOException if there are problems reading logging properties
      */
-    public static void main(final String[] args) throws IOException, NoSuchAlgorithmException {
+    public static void main(final String[] args) throws NoSuchAlgorithmException {
         BlueprintApplication app = new BlueprintApplication(Config.create());
 
         // Try to start the server. If successful, print some info and arrange to
@@ -135,12 +131,31 @@ public class BlueprintApplication {
                 });
     }
 
-    public static Driver initNeo4jDriver(Config config) {
+    public static SessionFactory initNeo4jDriver(String uri, String username, String password, Integer poolSize) {
+        var builder = new Configuration.Builder();
+        builder.credentials(username, password);
+        builder.uri(uri);
+        builder.connectionPoolSize(poolSize);
+        return new SessionFactory(builder.build(), Commit.class.getPackageName());
+    }
+
+    public static SessionFactory initNeo4jDriver(Config config) {
         String host = config.get("host").asString().get();
         int port = config.get("port").asInt().get();
-        String username = config.get("username").asString().get();
-        String password = config.get("password").asString().get();
-        return GraphDatabase.driver("bolt://" + host + ":" + port, AuthTokens.basic(username, password));
+        return initNeo4jDriver(
+                "bolt://" + host + ":" + port,
+                config.get("username").asString().get(),
+                config.get("password").asString().get(),
+                config.get("poolSize").asInt().orElse(10)
+        );
+    }
+
+    public GitStore getGitStore() {
+        return gitStore;
+    }
+
+    public NotebookStore getNotebookStore() {
+        return notebookStore;
     }
 
     public <T> T put(Class<T> clazz, T instance) {

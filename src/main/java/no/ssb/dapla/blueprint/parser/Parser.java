@@ -1,12 +1,14 @@
 package no.ssb.dapla.blueprint.parser;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import no.ssb.dapla.blueprint.neo4j.NotebookStore;
 import no.ssb.dapla.blueprint.neo4j.model.Notebook;
-import no.ssb.dapla.blueprint.neo4j.model.Repository;
-import no.ssb.dapla.blueprint.neo4j.model.Revision;
-import org.neo4j.driver.AuthTokens;
-import org.neo4j.driver.GraphDatabase;
+import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.jgit.diff.DiffEntry;
+import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import picocli.CommandLine;
 import picocli.CommandLine.Option;
 
@@ -15,63 +17,125 @@ import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
+import static no.ssb.dapla.blueprint.BlueprintApplication.initNeo4jDriver;
 import static picocli.CommandLine.Parameters;
 
 public final class Parser {
 
+    private static final Logger log = LoggerFactory.getLogger(Parser.class);
+
     private final NotebookFileVisitor visitor;
     private final NotebookProcessor processor;
-    private final Output output;
+    private final GitHelper gitHelper;
+    private final NotebookStore notebookStore;
 
-    public Parser(NotebookFileVisitor visitor, Output output) {
-        this(visitor, output, new NotebookProcessor(new ObjectMapper()));
+    public Parser(Repository repository, NotebookStore store, Set<String> ignores) {
+        this.gitHelper = new GitHelper(Objects.requireNonNull(repository));
+        this.visitor = new NotebookFileVisitor(ignores);
+        this.processor = new NotebookProcessor();
+        this.notebookStore = Objects.requireNonNull(store);
     }
 
-    public Parser(NotebookFileVisitor visitor, Output output, NotebookProcessor processor) {
-        this.visitor = Objects.requireNonNull(visitor);
-        this.output = Objects.requireNonNull(output);
-        this.processor = Objects.requireNonNull(processor);
+    public Parser(Repository repository, NotebookStore store) {
+        this(repository, store, Set.of(".git"));
     }
 
-    public static void main(String... args) throws IOException {
+    public static void main(String... args) throws IOException, GitAPIException {
         Options options = CommandLine.populateCommand(new Options(), args);
         if (options.helpRequested) {
             CommandLine.usage(new Parser.Options(), System.err);
             return;
         }
 
-        var auth = AuthTokens.none();
-        if (options.user != null && options.password != null) {
-            auth = AuthTokens.basic(options.user, options.password);
+        var sessionFactory = initNeo4jDriver(options.host.toString(), options.user, options.password, 10);
+        var repository = new FileRepositoryBuilder()
+                .setWorkTree(options.root).setup().build();
+        HashSet<String> ignores = new HashSet<>(options.ignores);
+        ignores.add(".git");
+
+        Parser parser = new Parser(repository, new NotebookStore(sessionFactory), ignores);
+        if (options.commitId.contains(":")) {
+            String[] range = options.commitId.split(":");
+            parser.parse(options.root.toPath(), URI.create(options.repositoryURL), range[0], range[1]);
+        } else {
+            parser.parse(options.root.toPath(), options.commitId, URI.create(options.repositoryURL));
         }
-
-        var driver = GraphDatabase.driver(options.host, auth);
-        var output = new Neo4jOutput(new NotebookStore(driver));
-        var visitor = new NotebookFileVisitor(new HashSet<>(options.ignores));
-
-        Parser parser = new Parser(visitor, output);
-
-        var revision = new Revision(options.commitId);
-        revision.setRepository(new Repository(options.repositoryURL));
-        parser.parse(options.root.toPath(), revision);
-
+        sessionFactory.close();
     }
 
-    public void parse(Path path, Revision revision) throws IOException {
-        Files.walkFileTree(path, visitor);
-        for (Path notebookPath : visitor.getNotebooks()) {
-
-            // (repo/foo/bar).relativize(repo/) -> foo/bar.
-            var relNotebookPath = path.relativize(notebookPath);
-
-            Notebook nb = processor.process(path, relNotebookPath);
-            nb.setRevision(revision);
-            output.output(nb);
+    public void parse(Path repositoryPath, URI repositoryURI, String revFrom, String revTo) throws IOException, GitAPIException {
+        for (String commitId : gitHelper.getRange(revFrom, revTo)) {
+            parse(repositoryPath, commitId, repositoryURI);
         }
+    }
+
+    public void parse(Path repositoryPath, String commitId, URI repositoryURI) throws IOException {
+
+        log.info("parsing commit {} from repository {} (checked out in {})", commitId, repositoryURI, repositoryPath);
+        try {
+
+            gitHelper.checkout(commitId);
+            Map<String, DiffEntry> diffMap = gitHelper.getDiffMap(commitId);
+
+            // We get the commit and repository since we want to add a relation.
+            var persistedRepo = notebookStore.findOrCreateRepository(repositoryURI);
+
+            var persistedCommit = notebookStore.findOrCreateCommit(commitId);
+
+            RevCommit commit = gitHelper.getCommit(commitId);
+
+            persistedCommit.setAuthorName(commit.getAuthorIdent().getName());
+            persistedCommit.setAuthorEmail(commit.getAuthorIdent().getEmailAddress());
+            persistedCommit.setAuthoredAt(commit.getAuthorIdent().getWhen().toInstant()
+                    .atZone(commit.getAuthorIdent().getTimeZone().toZoneId()).toInstant());
+
+            persistedCommit.setCommitterName(commit.getAuthorIdent().getName());
+            persistedCommit.setCommitterEmail(commit.getAuthorIdent().getEmailAddress());
+            persistedCommit.setCommittedAt(commit.getAuthorIdent().getWhen().toInstant()
+                    .atZone(commit.getAuthorIdent().getTimeZone().toZoneId()).toInstant());
+
+            persistedCommit.setMessage(commit.getFullMessage());
+
+            Files.walkFileTree(repositoryPath, visitor);
+            for (Path absolutePath : visitor.getNotebooks()) {
+
+                // (repo/foo/bar).relativize(repo/) -> foo/bar.
+                var relativePath = repositoryPath.relativize(absolutePath);
+
+                Notebook nb = processor.process(repositoryPath, relativePath);
+
+                nb.setBlobId(gitHelper.getObjectId(commitId, relativePath));
+
+                if (diffMap.containsKey(relativePath.toString())) {
+                    switch (diffMap.get(relativePath.toString()).getChangeType()) {
+                        case ADD -> {
+                            persistedCommit.addCreate(relativePath, nb);
+                        }
+                        // TODO: Add missing cases.
+                        case MODIFY, RENAME, COPY -> {
+                            persistedCommit.addUpdate(relativePath, nb);
+                        }
+                        case DELETE -> {
+                            persistedCommit.addDelete(relativePath, nb);
+                        }
+                    }
+                } else {
+                    persistedCommit.addUnchanged(relativePath, nb);
+                }
+            }
+
+            persistedRepo.addCommit(persistedCommit);
+            notebookStore.saveRepository(persistedRepo);
+
+        } catch (Exception ex) {
+            log.warn("failed to parse commit {} from repository {} (checked out in {})", commitId, repositoryURI,
+                    repositoryPath, ex);
+        } finally {
+            visitor.close();
+        }
+
     }
 
     public final static class Options {
@@ -79,7 +143,7 @@ public final class Parser {
         @Option(required = true, names = {"-u", "--url"}, description = "Repository URL")
         public String repositoryURL;
 
-        @Option(required = true, names = {"-c", "--commit"}, description = "Specify the commit to associate with the graph")
+        @Option(required = true, names = {"-c", "--commit"}, description = "Specify the commit or range of commit to process")
         public String commitId;
 
         @Option(names = {"-i", "--ignore"}, description = "folders to ignore")
