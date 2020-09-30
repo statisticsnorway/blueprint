@@ -13,6 +13,7 @@ import io.helidon.webserver.StaticContentSupport;
 import io.helidon.webserver.WebServer;
 import io.helidon.webserver.WebTracingConfig;
 import io.helidon.webserver.accesslog.AccessLogSupport;
+import io.helidon.webserver.cors.CorsSupport;
 import no.ssb.dapla.blueprint.neo4j.GitStore;
 import no.ssb.dapla.blueprint.neo4j.NotebookStore;
 import no.ssb.dapla.blueprint.neo4j.model.Commit;
@@ -82,6 +83,8 @@ public class BlueprintApplication {
 
         var server = WebServer.builder();
 
+        CorsSupport corsSupport = CorsSupport.create();
+
         server.routing(Routing.builder()
                 .register(AccessLogSupport.create(config.get("server.access-log")))
                 .register(WebTracingConfig.create(config.get("tracing")))
@@ -92,7 +95,7 @@ public class BlueprintApplication {
                 .register("/rapidoc", rapidoc)
                 .register("/redoc", redoc)
 
-                .register("/api/v1", blueprintService)
+                .register("/api/v1", corsSupport, blueprintService)
                 .register("/api/v1", githubHookService)
         );
         server.addMediaSupport(JacksonSupport.create());
