@@ -10,10 +10,7 @@ import no.ssb.dapla.blueprint.neo4j.GitStore;
 import no.ssb.dapla.blueprint.neo4j.NotebookStore;
 import no.ssb.dapla.blueprint.neo4j.model.Commit;
 import no.ssb.dapla.blueprint.neo4j.model.Notebook;
-import no.ssb.dapla.blueprint.rest.json.CommitSummary;
-import no.ssb.dapla.blueprint.rest.json.DirectedAcyclicGraph;
-import no.ssb.dapla.blueprint.rest.json.NotebookDetail;
-import no.ssb.dapla.blueprint.rest.json.NotebookSummary;
+import no.ssb.dapla.blueprint.rest.json.*;
 
 import java.util.Collection;
 import java.util.List;
@@ -73,9 +70,12 @@ public class BlueprintService implements Service {
                         .accept(this::getRepositoriesHandler, APPLICATION_REPOSITORY_JSON, APPLICATION_JSON)
                         .orFail()
                 )
-
                 .get("/repositories/{repoId}/commits", MediaTypeHandler.create()
                         .accept(this::getRevisionsHandler, APPLICATION_REVISION_JSON, APPLICATION_JSON)
+                        .orFail()
+                )
+                .get("/repositories/{repoId}/commits/{commitId}", MediaTypeHandler.create()
+                        .accept(this::getRevisionHandler, APPLICATION_REVISION_JSON, APPLICATION_JSON)
                         .orFail()
                 )
                 .get("/repositories/{repoId}/commits/{commitId}/notebooks", MediaTypeHandler.create()
@@ -179,6 +179,17 @@ public class BlueprintService implements Service {
         } else {
             List<CommitSummary> summaries = commits.get().stream().map(CommitSummary::new).collect(Collectors.toList());
             response.status(Http.Status.OK_200).send(summaries);
+        }
+    }
+
+    private void getRevisionHandler(ServerRequest request, ServerResponse response) {
+        var repositoryId = parseRepositoryId(request);
+        var commitId = parseCommitId(request);
+        var commit = notebookStore.getCommit(repositoryId, commitId);
+        if (commit.isEmpty()) {
+            response.status(Http.Status.NOT_FOUND_404).send();
+        } else {
+            response.status(Http.Status.OK_200).send(new CommitDetail(commit.get()));
         }
     }
 }

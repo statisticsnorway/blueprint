@@ -42,6 +42,22 @@ paths:
               schema:
                 $ref: '#/components/schemas/Commits'
 
+  /repositories/{repoID}/commits/{commitId}:
+    summary: Get details about a paritular commit.
+    get:
+      parameters:
+        - $ref: '#/components/parameters/repositoryId'
+      responses:
+        '200':
+          description: The list of commits
+          content:
+            application/vnd.ssb.blueprint.revision+json:
+              schema:
+                $ref: '#/components/schemas/Commit'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Commit'
+
   /repositories/{repoID}/commits/{commitId}/notebooks:
     summary: List the notebooks for a revision.
     get:
