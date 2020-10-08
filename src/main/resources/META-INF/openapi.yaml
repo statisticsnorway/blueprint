@@ -97,9 +97,6 @@ paths:
         '200':
           description: The notebook. Note that one can ask for the actual content of the file with the content type.
           content:
-            application/vnd.ssb.blueprint.dag+json:
-              schema:
-                $ref: '#/components/schemas/Graph'
             application/x-ipynb+json:
               schema:
                 type: object
@@ -109,6 +106,42 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Notebook'
+
+  /repositories/{repoID}/commits/{commitId}/notebooks/{notebookId}/backward:
+    summary: Get the backward dependencies of a notebook.
+    get:
+      parameters:
+        - $ref: '#/components/parameters/repositoryId'
+        - $ref: '#/components/parameters/commitId'
+        - $ref: '#/components/parameters/notebookId'
+      responses:
+        '200':
+          description: A DAG representation of the notebooks.
+          content:
+            application/vnd.ssb.blueprint.dag+json:
+              schema:
+                $ref: '#/components/schemas/Graph'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Graph'
+
+  /repositories/{repoID}/commits/{commitId}/notebooks/{notebookId}/forward:
+    summary: Get the forward dependencies of a notebook.
+    get:
+      parameters:
+        - $ref: '#/components/parameters/repositoryId'
+        - $ref: '#/components/parameters/commitId'
+        - $ref: '#/components/parameters/notebookId'
+      responses:
+        '200':
+          description: A DAG representation of the notebooks.
+          content:
+            application/vnd.ssb.blueprint.dag+json:
+              schema:
+                $ref: '#/components/schemas/Graph'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Graph'
 
   /repositories/{repoID}/commits/{commitId}/notebooks/{notebookId}/inputs:
     summary: Get a notebook.

@@ -85,10 +85,18 @@ public class BlueprintService implements Service {
                 )
                 .get("/repositories/{repoId}/commits/{commitId}/notebooks/{notebookId}", MediaTypeHandler.create()
                         .accept(this::getNotebookContentHandler, APPLICATION_JUPYTER_JSON)
-                        .accept(this::getNotebookAsDAGHandler, APPLICATION_DAG_JSON)
                         .accept(this::getNotebookHandler, APPLICATION_NOTEBOOK_JSON, APPLICATION_JSON)
                         .orFail()
+                )
+                .get("/repositories/{repoId}/commits/{commitId}/notebooks/{notebookId}/forward", MediaTypeHandler.create()
+                        .accept(this::getDagForward, APPLICATION_DAG_JSON, APPLICATION_JSON)
+                        .orFail()
+                )
+                .get("/repositories/{repoId}/commits/{commitId}/notebooks/{notebookId}/backward", MediaTypeHandler.create()
+                        .accept(this::getDagBackward, APPLICATION_DAG_JSON, APPLICATION_JSON)
+                        .orFail()
                 );
+
     }
 
     private void getNotebookContentHandler(ServerRequest request, ServerResponse response) {
@@ -123,44 +131,41 @@ public class BlueprintService implements Service {
         }
     }
 
-    private void getNotebooksAsDAGHandler(ServerRequest request, ServerResponse response) {
-        var repositoryId = parseRepositoryId(request);
-        var commitId = parseCommitId(request);
-        var commitWithDependencies = notebookStore.getDependencies(repositoryId, commitId);
+    private void sendDAG(ServerResponse response, Optional<Commit> commitWithDependencies) {
         if (commitWithDependencies.isEmpty()) {
             response.status(Http.Status.NOT_FOUND_404).send();
         } else {
-
             Commit commit = commitWithDependencies.get();
             List<NotebookDetail> notebooks = Stream.of(
                     commit.getCreates(),
                     commit.getUpdates(),
                     commit.getUnchanged()
             ).flatMap(Collection::stream).map(NotebookDetail::new).collect(Collectors.toList());
-
             response.status(Http.Status.OK_200).send(new DirectedAcyclicGraph(notebooks));
         }
     }
 
-    private void getNotebookAsDAGHandler(ServerRequest request, ServerResponse response) {
+    private void getNotebooksAsDAGHandler(ServerRequest request, ServerResponse response) {
+        var repositoryId = parseRepositoryId(request);
+        var commitId = parseCommitId(request);
+        var commitWithDependencies = notebookStore.getDependencies(repositoryId, commitId);
+        sendDAG(response, commitWithDependencies);
+    }
+
+    private void getDagBackward(ServerRequest request, ServerResponse response) {
         var repositoryId = parseRepositoryId(request);
         var commitId = parseCommitId(request);
         var notebookId = parseNotebookId(request);
-        var commitWithDependencies = notebookStore.getDependencies(repositoryId, commitId, notebookId);
-        if (commitWithDependencies.isEmpty()) {
-            response.status(Http.Status.NOT_FOUND_404).send();
-        } else {
+        var commitWithDependencies = notebookStore.getBackwardDependencies(repositoryId, commitId, notebookId);
+        sendDAG(response, commitWithDependencies);
+    }
 
-            Commit commit = commitWithDependencies.get();
-            List<NotebookDetail> notebooks = Stream.of(
-                    commit.getCreates(),
-                    commit.getUpdates(),
-                    commit.getUnchanged()
-            ).flatMap(Collection::stream).map(NotebookDetail::new).collect(Collectors.toList());
-
-            response.status(Http.Status.OK_200).send(new DirectedAcyclicGraph(notebooks));
-        }
-
+    private void getDagForward(ServerRequest request, ServerResponse response) {
+        var repositoryId = parseRepositoryId(request);
+        var commitId = parseCommitId(request);
+        var notebookId = parseNotebookId(request);
+        var commitWithDependencies = notebookStore.getForwardDependencies(repositoryId, commitId, notebookId);
+        sendDAG(response, commitWithDependencies);
     }
 
     private void getNotebookHandler(ServerRequest request, ServerResponse response) {
