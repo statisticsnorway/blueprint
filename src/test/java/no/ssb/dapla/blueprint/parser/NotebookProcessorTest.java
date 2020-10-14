@@ -49,4 +49,13 @@ class NotebookProcessorTest {
         assertThat(notebook.getInputs()).isEmpty();
         assertThat(notebook.getOutputs()).isEmpty();
     }
+
+    @Test
+    void testInputOutputFormat() throws IOException {
+        Notebook notebook = processor.process("src/test/resources/notebooks/graph", "commit3/Familie.ipynb");
+        assertThat(notebook.getInputs()).isNotEmpty();
+        assertThat(notebook.getInputs().size()).isEqualTo(5);
+        assertThat(notebook.getOutputs()).isNotEmpty();
+        assertThat(notebook.getOutputs().size()).isEqualTo(3);
+    }
 }

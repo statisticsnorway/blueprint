@@ -44,31 +44,49 @@ public class NotebookProcessor {
         if (!source.isArray()) {
             throw new IOException("source was not an array");
         }
+        if (source.size() == 0) {
+            return;
+        }
 
         Set<Dataset> set = null;
-        for (JsonNode line : source) {
-            String textLine = line.asText().trim();
-            // Ignore regular code.
-            if (!textLine.startsWith("#")) {
-                if (set != null) {
-                    set = null;
+
+        // check first line for input or output magic
+        String firstLine = source.get(0).asText().trim();
+        if ("%%input".equals(firstLine) || "%%output".equals(firstLine)) {
+            set = "%%input".equals(firstLine) ? notebook.getInputs() : notebook.getOutputs();
+            // skip first line
+            for (int i = 1; i < source.size(); i++) {
+                String dataset = source.get(i).asText().trim();
+                if (dataset.length() > 0) {
+                    set.add(new Dataset(dataset));
                 }
-                continue;
-            } else {
-                textLine = textLine.substring(1);
             }
+        } else {
+            for (JsonNode line : source) {
+                String textLine = line.asText().trim();
+                // Ignore regular code.
+                if (!(textLine.startsWith("#"))) {
+                    if (set != null) {
+                        set = null;
+                    }
+                    continue;
+                } else {
+                    textLine = textLine.substring(1);
+                }
 
-            if ("!inputs".equals(textLine)) {
-                set = notebook.getInputs();
-                continue;
-            }
-            if ("!outputs".equals(textLine)) {
-                set = notebook.getOutputs();
-                continue;
-            }
 
-            if (set != null) {
-                set.add(new Dataset(textLine.trim()));
+                if ("!inputs".equals(textLine)) {
+                    set = notebook.getInputs();
+                    continue;
+                }
+                if ("!outputs".equals(textLine)) {
+                    set = notebook.getOutputs();
+                    continue;
+                }
+
+                if (set != null) {
+                    set.add(new Dataset(textLine.trim()));
+                }
             }
         }
     }
