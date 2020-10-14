@@ -10,10 +10,10 @@ The class `BlueprintApplication` is a helidon micro service that can be integrat
 application can be used to scan file locally. 
 
 Both `BlueprintApplication` and `Parser` try to connect to a neo4j database. You can start a local database with docker 
-like this (note that you need set the correct credentials `neo4j/secret` in `application.yml`): 
+like this (note that you need set the correct credentials `neo4j/password` in `application.yml`): 
 
 ```
-docker run --rm -e NEO4J_AUTH=neo4j/secret -p 27474:7474 -p 27687:7687  neo4j:4.0
+docker run --rm -e NEO4J_AUTH=neo4j/password -p 27474:7474 -p 27687:7687  neo4j:4.0 (pwd)/plugins:/plugins neo4j:4.1
 ```
 
 Start the service:
