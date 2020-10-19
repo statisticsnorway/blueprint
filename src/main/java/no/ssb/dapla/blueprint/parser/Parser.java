@@ -126,7 +126,7 @@ public final class Parser {
             diffMap.values().stream()
                     .filter(entry -> entry.getChangeType().equals(DiffEntry.ChangeType.DELETE))
                     .forEach(entry -> persistedCommit
-                            .addDelete(entry.getOldPath(), new Notebook(entry.getOldPath())));
+                            .addDelete(entry.getOldPath(), new Notebook(entry.getId(DiffEntry.Side.OLD).toObjectId().getName())));
 
             persistedRepo.addCommit(persistedCommit);
             notebookStore.saveRepository(persistedRepo);
