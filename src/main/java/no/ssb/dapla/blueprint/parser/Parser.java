@@ -71,7 +71,7 @@ public final class Parser {
         }
     }
 
-    public void parse(Path repositoryPath, String commitId, URI repositoryURI) throws IOException {
+    public void parse(Path repositoryPath, String commitId, URI repositoryURI) {
 
         log.info("parsing commit {} from repository {} (checked out in {})", commitId, repositoryURI, repositoryPath);
         try {
@@ -110,21 +110,23 @@ public final class Parser {
 
                 if (diffMap.containsKey(relativePath.toString())) {
                     switch (diffMap.get(relativePath.toString()).getChangeType()) {
-                        case ADD -> {
-                            persistedCommit.addCreate(relativePath, nb);
-                        }
+                        case ADD -> persistedCommit.addCreate(relativePath, nb);
                         // TODO: Add missing cases.
-                        case MODIFY, RENAME, COPY -> {
-                            persistedCommit.addUpdate(relativePath, nb);
-                        }
+                        case MODIFY, RENAME, COPY -> persistedCommit.addUpdate(relativePath, nb);
                         case DELETE -> {
-                            persistedCommit.addDelete(relativePath, nb);
+                            // it will never reach this, as deleted notebooks are not present in the notebooks list
                         }
                     }
                 } else {
                     persistedCommit.addUnchanged(relativePath, nb);
                 }
             }
+
+            // Add deleted files
+            diffMap.values().stream()
+                    .filter(entry -> entry.getChangeType().equals(DiffEntry.ChangeType.DELETE))
+                    .forEach(entry -> persistedCommit
+                            .addDelete(entry.getOldPath(), new Notebook(entry.getId(DiffEntry.Side.OLD).toObjectId().getName())));
 
             persistedRepo.addCommit(persistedCommit);
             notebookStore.saveRepository(persistedRepo);

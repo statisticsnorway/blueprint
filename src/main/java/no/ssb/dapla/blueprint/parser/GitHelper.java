@@ -81,7 +81,6 @@ public class GitHelper {
         AbstractTreeIterator currentTree = getTree(commitId + "^{tree}");
         AbstractTreeIterator previousTree = getTree(commitId + "~1^{tree}");
         if (previousTree == null) {
-            // Sha of empty tree.
             previousTree = new EmptyTreeIterator();
         }
         var diffCommand = Git.wrap(repository)
