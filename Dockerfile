@@ -15,7 +15,7 @@
 #
 
 # 1st stage, build the app
-FROM maven:3.6-jdk-14 as build
+FROM maven:3.6-openjdk-15 as build
 
 WORKDIR /helidon
 
@@ -33,13 +33,13 @@ RUN mvn package -DskipTests
 RUN echo "done!"
 
 # 2nd stage, build the runtime image
-FROM openjdk:14-slim
+FROM openjdk:15-slim
 WORKDIR /helidon
 
 # Copy the binary built in the 1st stage
 COPY --from=build /helidon/target/blueprint.jar ./
 COPY --from=build /helidon/target/libs ./libs
 
-CMD ["java", "--enable-preview", "-jar", "blueprint.jar"]
+CMD ["java", "-jar", "blueprint.jar"]
 
 EXPOSE 20170
