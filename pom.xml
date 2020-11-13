@@ -16,8 +16,7 @@
 
     <properties>
         <mainClass>no.ssb.dapla.blueprint.BlueprintApplication</mainClass>
-        <maven.compiler.release>14</maven.compiler.release>
-        <maven.compiler.source>14</maven.compiler.source>
+        <maven.compiler.release>15</maven.compiler.release>
         <pmdVersion>6.22.0</pmdVersion>
     </properties>
 
@@ -311,21 +310,14 @@
                     </annotationProcessorPaths>
                     <compilerArgs>
                         <arg>-Aproject=${project.groupId}/${project.artifactId}</arg>
-                        <arg>--enable-preview</arg>
                     </compilerArgs>
                 </configuration>
             </plugin>
             <plugin>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <configuration>
-                    <argLine>--enable-preview ${argLine}</argLine>
-                </configuration>
             </plugin>
             <plugin>
                 <artifactId>maven-failsafe-plugin</artifactId>
-                <configuration>
-                    <argLine>--enable-preview ${argLine}</argLine>
-                </configuration>
             </plugin>
         </plugins>
     </build>
