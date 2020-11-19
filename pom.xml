@@ -16,7 +16,6 @@
 
     <properties>
         <mainClass>no.ssb.dapla.blueprint.BlueprintApplication</mainClass>
-        <maven.compiler.release>15</maven.compiler.release>
         <pmdVersion>6.22.0</pmdVersion>
     </properties>
 
@@ -311,6 +310,11 @@
                     <compilerArgs>
                         <arg>-Aproject=${project.groupId}/${project.artifactId}</arg>
                     </compilerArgs>
+                    <release>15</release>
+                    <source>15</source>
+                    <target>15</target>
+                    <testSource>15</testSource>
+                    <testTarget>15</testTarget>
                 </configuration>
             </plugin>
             <plugin>
